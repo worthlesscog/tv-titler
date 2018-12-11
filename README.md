@@ -9,7 +9,7 @@ tmdb: your-api-key
 tvdb: your-api-key
 ```
 
-####Command line
+### Command line
 
 ```
 id                          tv series id to download, database specific, tvdb slug is allowed
@@ -23,7 +23,7 @@ id                          tv series id to download, database specific, tvdb sl
 -target /tv                 target directory, defaults to cwd
 ```
 
-####Examples
+### Examples
 
 ```
 titler -search Penny
