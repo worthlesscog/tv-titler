@@ -13,6 +13,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.io.Source
 
+object Op extends Enumeration {
+    val download, merge, noop, resize, search, searchAll = Value
+}
+
 object Titler {
 
     val CONFIG = ".titler.cfg"
@@ -25,34 +29,31 @@ object Titler {
     val home = Paths.get(System.getProperty("user.home"))
     val players = Map(Mede8er.playerId -> Mede8er)
 
-    var db1: TvDatabase = Tmdb
+    var db: TvDatabase = Tmdb
     var db2: TvDatabase = Tvdb
     var dir = new File(".")
-    var id1 = ""
+    var id = ""
     var id2 = ""
     var lang = "en"
+    var op = Op.noop
     var player: MediaPlayer = Mede8er
     var resize = ""
     var search = ""
     var seasons: Option[Set[Int]] = None
 
     // val args1 = Array("-search", "Penny")
-    // val args2 = Array("54671", "-target", "E:\\tv")
-    // val args3 = Array("54671", "-target", "E:\\tv", "-seasons", "3-")
+    // val args2 = Array("-target", "E:\\tv", "54671")
+    // val args3 = Array("-target", "E:\\tv", "54671", "-seasons", "3-")
 
-    // val args1 = Array("-search", "Jeannie")
-    // val args2 = Array("1660", "-target", "E:\\tv")
-    // val args2 = Array("1660", "-target", "E:\\tv", "-lang", "de")
-
-    // val args1 = Array("-search", "Chuck")
-    // val args2 = Array("1404", "-target", "E:\\tv", "-seasons", "1")
-
-    // val args1 = Array("-db", "tvdb", "-search", "Penny")
+    // val args1 = Array("-search", "Penny", "-db", "tvdb")
     // val args2 = Array("-target", "E:\\tv", "-db", "tvdb", "265766")
     // val args3 = Array("-target", "E:\\tv", "-db", "tvdb", "265766", "-seasons", "2-")
     // val args4 = Array("-target", "E:\\tv", "-db", "tvdb", "penny-dreadful")
 
-    // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "265766")
+    // val args1 = Array("-searchall", "Penny")
+    // val args1 = Array("-searchall", "Mirror")
+
+    // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "penny-dreadful")
 
     def main(args: Array[String]): Unit = {
         val status = for {
@@ -64,17 +65,18 @@ object Titler {
 
     private def parseArgs(args: List[String]): Maybe[Boolean] =
         if (args isEmpty) {
-            if (id1.isEmpty && resize.isEmpty && search.isEmpty)
+            if (op == Op.noop)
                 "??\n" |> asLeft
             else
                 true |> asRight
         } else args match {
-            case id :: tail if !(id startsWith "-") =>
-                id1 = id
+            case i :: tail if !(i startsWith "-") =>
+                id = i
+                op = Op.download
                 parseArgs(tail)
 
-            case "-db" :: db :: tail =>
-                maybeSet(db1 = _, db) match {
+            case "-db" :: d :: tail =>
+                maybeSet(db = _, d) match {
                     case Left(error) => error |> asLeft
                     case _           => parseArgs(tail)
                 }
@@ -85,12 +87,18 @@ object Titler {
 
             case "-merge" :: d1 :: i1 :: d2 :: i2 :: tail =>
                 val t = for {
-                    _ <- maybeSet(db1 = _, d1)
+                    _ <- maybeSet(db = _, d1)
                     t <- maybeSet(db2 = _, d2)
                 } yield t
                 t match {
-                    case Left(error) => error |> asLeft
-                    case _           => id1 = i1; id2 = i2; parseArgs(tail)
+                    case Left(error) =>
+                        error |> asLeft
+
+                    case _ =>
+                        id = i1
+                        id2 = i2
+                        op = Op.merge
+                        parseArgs(tail)
                 }
 
             case "-player" :: p :: tail =>
@@ -102,10 +110,17 @@ object Titler {
 
             case "-resize" :: d :: tail =>
                 resize = d
+                op = Op.resize
                 parseArgs(tail)
 
             case "-search" :: s :: tail =>
                 search = s
+                op = Op.search
+                parseArgs(tail)
+
+            case "-searchall" :: s :: tail =>
+                search = s
+                op = Op.searchAll
                 parseArgs(tail)
 
             case ("-season" | "-seasons") :: commas(c) :: tail =>
@@ -129,37 +144,49 @@ object Titler {
     private def maybeSet(f: TvDatabase => Unit, db: String) =
         databases.get(db).fold[Maybe[Unit]](s"Unknown TV database $db\n" |> asLeft) { f(_) |> asRight }
 
-    private def run = {
-        if (id2 nonEmpty)
-            for {
-                auth <- loadAuth(home resolve CONFIG toFile)
-                f1 = download(db1, auth, id1, seasons, lang)
-                f2 = download(db2, auth, id2, seasons, lang)
-                s1 <- Await.result(f1, Duration.Inf)
-                s2 <- Await.result(f2, Duration.Inf)
-                status <- player.merge(s1, s2, dir)
-            } yield status
-        else if (id1 nonEmpty)
-            for {
-                auth <- loadAuth(home resolve CONFIG toFile)
-                f1 = download(db1, auth, id1, seasons, lang)
-                s <- Await.result(f1, Duration.Inf)
-                status <- player.generate(s, dir)
-            } yield status
-        else if (resize nonEmpty)
-            for {
-                status <- player.resize(new File(resize))
-            } yield status
-        else
-            for {
-                auth <- loadAuth(home resolve CONFIG toFile)
-                f1 = search(db1, search, auth, lang)
-                f2 = search(db2, search, auth, lang)
-                r1 <- Await.result(f1, Duration.Inf)
-                r2 <- Await.result(f2, Duration.Inf)
-                status <- tabulateSearchResults(r1, r2)
-            } yield status
-    }
+    private def run =
+        op match {
+            case Op.download =>
+                for {
+                    auth <- loadAuth(home resolve CONFIG toFile)
+                    f = download(db, auth, id, seasons, lang)
+                    s <- Await.result(f, Duration.Inf)
+                    status <- player.generate(s, dir)
+                } yield status
+
+            case Op.merge =>
+                for {
+                    auth <- loadAuth(home resolve CONFIG toFile)
+                    f = download(db, auth, id, seasons, lang)
+                    f2 = download(db2, auth, id2, seasons, lang)
+                    s <- Await.result(f, Duration.Inf)
+                    s2 <- Await.result(f2, Duration.Inf)
+                    status <- player.merge(s, s2, dir)
+                } yield status
+
+            case Op.resize =>
+                for {
+                    status <- player.resize(new File(resize))
+                } yield status
+
+            case Op.search =>
+                for {
+                    auth <- loadAuth(home resolve CONFIG toFile)
+                    f = search(db, search, auth, lang)
+                    r <- Await.result(f, Duration.Inf)
+                    status <- tabulateSearchResults(db, r)
+                } yield status
+
+            case Op.searchAll =>
+                for {
+                    auth <- loadAuth(home resolve CONFIG toFile)
+                    f = search(Tmdb, search, auth, lang)
+                    f2 = search(Tvdb, search, auth, lang)
+                    r <- Await.result(f, Duration.Inf)
+                    r2 <- Await.result(f2, Duration.Inf)
+                    status <- tabulateSearchResults(Tmdb, Tvdb, r, r2)
+                } yield status
+        }
 
     private def loadAuth(f: File) =
         try
@@ -176,48 +203,95 @@ object Titler {
             case _               => None
         }
 
-    private def download(db: TvDatabase, auth: Map[String, String], id: String, seasons: Option[Set[Int]], lang: String) = Future {
+    private def download(d: TvDatabase, auth: Map[String, String], id: String, seasons: Option[Set[Int]], lang: String) = Future {
         for {
-            token <- authenticate(db, auth)
-            series <- db.getTvSeries(id, seasons)(token, lang)
+            token <- authenticate(d, auth)
+            series <- d.getTvSeries(id, seasons)(token, lang)
         } yield series
     }
 
-    private def authenticate(db: TvDatabase, auth: Map[String, String]) =
+    private def authenticate(d: TvDatabase, auth: Map[String, String]) =
         for {
-            credentials <- getCredentials(db, auth)
-            token <- db.authenticate(credentials)
+            credentials <- getCredentials(d, auth)
+            token <- d.authenticate(credentials)
         } yield token
 
-    private def getCredentials(db: TvDatabase, auth: Map[String, String]) =
-        auth.get(db.databaseId).fold[Maybe[Credentials]] { s"No auth for ${ db.databaseId }\n" |> asLeft } {
+    private def getCredentials(d: TvDatabase, auth: Map[String, String]) =
+        auth.get(d.databaseId).fold[Maybe[Credentials]] { s"No auth for ${ d.databaseId }\n" |> asLeft } {
             t => Credentials(token = Some(t)) |> asRight
         }
 
-    private def search(db: TvDatabase, search: String, auth: Map[String, String], lang: String) = Future {
+    private def search(d: TvDatabase, search: String, auth: Map[String, String], lang: String) = Future {
         for {
-            token <- authenticate(db, auth)
-            results <- db.search(search)(token, lang)
+            token <- authenticate(d, auth)
+            results <- d.search(search)(token, lang)
         } yield results
     }
 
-    private def tabulateSearchResults(r1: Seq[SearchResult], r2: Seq[SearchResult]) = {
-        def commas(seq: Seq[_]) = seq mkString ", "
-        def ljs(width: Int) = "%-" + width + "s"
-        def longest[T](s: Seq[T]) = (s map { _.toString length }) |> max
-        def max(s: Seq[Int]) = if (s isEmpty) 0 else s max
-        def opt[T](t: Option[T]) = t.fold { "" } { _.toString }
-        def rjs(width: Int) = "%" + width + "s"
+    private def tabulateSearchResults(d: TvDatabase, r: Seq[SearchResult]) = {
+        val fmt = rjs(genreLen(r) + 3) + "   " +
+            ljs(langLen(r) + 3) +
+            ljs(airLen(r) + 3) +
+            ljs(idLen(r, d.databaseId.length) + 3) +
+            "%s\n"
 
-        val len1 = r1.flatMap { _.genres map commas } |> longest
-        val len2 = r1.flatMap { _.language } |> longest
-        val len3 = r1.flatMap { _.firstAirDate } |> longest
-        val len4 = r1.map { _.id } |> longest
-        val fmt = rjs(len1 + 3) + "   " + ljs(len2 + 3) + ljs(len3 + 3) + ljs(len4 + 3) + "%s\n"
-
-        r1.sortBy { _.name } foreach { r =>
-            fmt.format(opt(r.genres map commas), opt(r.language), opt(r.firstAirDate), r.id.toString, opt(r.name)) |> info
+        fmt.format("Genre", "Lang", "Aired", d.databaseId, "Name") |> info
+        r.sortBy { _.name } foreach { r =>
+            fmt.format(opt(r.genres map commaSeperated), opt(r.language), opt(r.firstAirDate), r.id.toString, r.name) |> info
         }
+
+        DONE |> asRight
+    }
+
+    private def genreLen(s: Seq[SearchResult]) = s.flatMap { _.genres map commaSeperated } |> longest max 5
+    private def commaSeperated(seq: Seq[_]) = seq mkString ", "
+    private def longest[T](s: Seq[T]) = (s map { _.toString length }) |> max
+    private def max(s: Seq[Int]) = if (s isEmpty) 0 else s max
+    private def langLen(s: Seq[SearchResult]) = s.flatMap { _.language } |> longest max 4
+    private def airLen(s: Seq[SearchResult]) = s.flatMap { _.firstAirDate } |> longest max 5
+    private def idLen(s: Seq[SearchResult], min: Int) = s.map { _.id } |> longest max min
+    private def rjs(width: Int) = "%" + width + "s"
+    private def ljs(width: Int) = "%-" + width + "s"
+    private def opt[T](t: Option[T]) = t.fold { "" } { _.toString }
+
+    private def tabulateSearchResults(d: TvDatabase, d2: TvDatabase, r: Seq[SearchResult], r2: Seq[SearchResult]) = {
+        def interleave(fmt: String, s: Seq[SearchResult], s2: Seq[SearchResult]): Unit =
+            if (s2 isEmpty)
+                s foreach { r => format(fmt, r, r.id.toString, "") }
+            else if (s isEmpty)
+                s2 foreach { r => format(fmt, r, "", r.id.toString) }
+            else (s.head.name, s2.head.name) match {
+                case (n1, n2) if n1 < n2 =>
+                    format(fmt, s.head, s.head.id.toString, "")
+                    interleave(fmt, s.tail, s2)
+
+                case (n1, n2) if n1 == n2 =>
+                    if (s.head.firstAirDate == s2.head.firstAirDate) {
+                        format(fmt, s.head, s.head.id.toString, s2.head.id.toString)
+                        interleave(fmt, s.tail, s2.tail)
+                    } else {
+                        format(fmt, s.head, s.head.id.toString, "")
+                        interleave(fmt, s.tail, s2)
+                    }
+
+                case _ =>
+                    format(fmt, s2.head, "", s2.head.id.toString)
+                    interleave(fmt, s, s2.tail)
+            }
+
+        def format(fmt: String, r: SearchResult, id1: String, id2: String) =
+            fmt.format(opt(r.genres map commaSeperated), opt(r.language), opt(r.firstAirDate), id1, id2, r.name) |> info
+
+        val both = r ++ r2
+        val fmt = rjs(genreLen(both) + 3) + "   " +
+            ljs(langLen(both) + 3) +
+            ljs(airLen(both) + 3) +
+            ljs(idLen(r, d.databaseId.length) + 3) +
+            ljs(idLen(r2, d2.databaseId.length) + 3) +
+            "%s\n"
+
+        fmt.format("Genre", "Lang", "Aired", d.databaseId, d2.databaseId, "Name") |> info
+        interleave(fmt, r sortBy { _.name }, r2 sortBy { _.name })
 
         DONE |> asRight
     }

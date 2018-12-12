@@ -81,8 +81,8 @@ object Tvdb extends TvDatabase {
         s.data match {
             case Some(results) =>
                 results
-                    .filter { _.id nonEmpty }
-                    .map { r => SearchResult(r.id.get, r.seriesName, r.firstAired, None, None) } |> asRight
+                    .filter { r => r.id.nonEmpty && r.seriesName.nonEmpty }
+                    .map { r => SearchResult(r.id.get, r.seriesName.get, r.firstAired, None, None) } |> asRight
 
             case _ =>
                 Nil |> asRight
@@ -154,7 +154,7 @@ object Tvdb extends TvDatabase {
         }
     }
 
-    def download[T](f: (String, Pairs) => Maybe[Seq[T]], url: String, parameters: Pairs, label: String, ps: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
+    private def download[T](f: (String, Pairs) => Maybe[Seq[T]], url: String, parameters: Pairs, label: String, ps: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
         if (ps isEmpty)
             tees |> asRight
         else f(url, parameters :+ (label, ps.head)) match {

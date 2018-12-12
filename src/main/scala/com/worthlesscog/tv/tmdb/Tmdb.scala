@@ -86,9 +86,9 @@ object Tmdb extends TvDatabase {
 
     private def convertResults(results: Seq[Result], genres: Map[Int, String]) =
         results
-            .filter { _.id nonEmpty }
+            .filter { r => r.id.nonEmpty && r.name.nonEmpty }
             .map {
-                r => ApiSearchResult(r.id.get, r.name, r.first_air_date, r.original_language, r.genre_ids map { _ map genres })
+                r => ApiSearchResult(r.id.get, r.name.get, r.first_air_date, r.original_language, r.genre_ids map { _ map genres })
             } |> asRight
 
     def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
