@@ -34,4 +34,20 @@ titler -db tvdb penny-dreadful
 titler -searchall Battlestar
 ```
 
+### Search 
+
+```
+                                         Genre   Lang   Aired        tmdb    tvdb     Name
+                                                        2007-03-01           207131   BSGCast
+                        Drama, Science Fiction   en     1978-09-17   501     71173    Battlestar Galactica
+                     Action & Adventure, Drama   en     2003-12-08   71365            Battlestar Galactica
+   Action & Adventure, Drama, Sci-Fi & Fantasy   en     2004-10-18   1972             Battlestar Galactica
+                                                        2003-12-08           73545    Battlestar Galactica (2003)
+                              Sci-Fi & Fantasy   en     2012-11-09   33240   204781   Battlestar Galactica: Blood & Chrome
+                       Drama, Sci-Fi & Fantasy   en     2007-10-05   61910            Battlestar Galactica: Razor Flashbacks
+                        Science Fiction, Drama   en     2008-12-12   8546             Battlestar Galactica: The Face of the Enemy
+      Science Fiction, Drama, Sci-Fi & Fantasy   en     2006-09-05   4882             Battlestar Galactica: The Resistance
+                                                 en     1981-10-26   12090            Battlestars
+                              Sci-Fi & Fantasy   en     1980-01-27   4621    71170    Galactica 1980
+```
 sbt assembly to build an executable JAR.
