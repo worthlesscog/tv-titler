@@ -232,6 +232,7 @@ object Mede8er extends MediaPlayer {
     //       multi-dashes
     //       floating .
     //       floating ;
+    //       floating ,
     //       """"
     //
     //       long text
@@ -253,7 +254,8 @@ object Mede8er extends MediaPlayer {
             .replaceAll(" +", " ")
             .replaceAll("-{2,}", "-")
             .replaceAll(""" \.""", """\.""")
-            .replaceAll(""" \;""", """\;""")
+            .replaceAll(" ;", ";")
+            .replaceAll(" ,", ",")
             .replaceAll("""""""", """"""")
             .trim
 
