@@ -52,6 +52,7 @@ object Titler {
 
     // val args1 = Array("-searchall", "Penny")
     // val args1 = Array("-searchall", "Mirror")
+    // val args1 = Array("-searchall", "The Black")
 
     // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "penny-dreadful")
 
@@ -236,7 +237,7 @@ object Titler {
             "%s\n"
 
         fmt.format("Genre", "Lang", "Aired", d.databaseId, "Name") |> info
-        r.sortBy { _.name } foreach { r =>
+        ordered(r) foreach { r =>
             fmt.format(opt(r.genres map commaSeperated), opt(r.language), opt(r.firstAirDate), r.id.toString, r.name) |> info
         }
 
@@ -252,6 +253,7 @@ object Titler {
     private def idLen(s: Seq[SearchResult], min: Int) = s.map { _.id } |> longest max min
     private def rjs(width: Int) = "%" + width + "s"
     private def ljs(width: Int) = "%-" + width + "s"
+    private def ordered(r: Seq[SearchResult]) = r sortBy { r => (r.name, r.firstAirDate) }
     private def opt[T](t: Option[T]) = t.fold { "" } { _.toString }
 
     private def tabulateSearchResults(d: TvDatabase, d2: TvDatabase, r: Seq[SearchResult], r2: Seq[SearchResult]) = {
@@ -290,8 +292,9 @@ object Titler {
             ljs(idLen(r2, d2.databaseId.length) + 3) +
             "%s\n"
 
+
         fmt.format("Genre", "Lang", "Aired", d.databaseId, d2.databaseId, "Name") |> info
-        interleave(fmt, r sortBy { _.name }, r2 sortBy { _.name })
+        interleave(fmt, ordered(r), ordered(r2))
 
         DONE |> asRight
     }
