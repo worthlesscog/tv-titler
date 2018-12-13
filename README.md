@@ -34,7 +34,7 @@ titler -db tvdb penny-dreadful
 titler -searchall Battlestar
 ```
 
-### Search 
+### Search output 
 
 ```
                                          Genre   Lang   Aired        tmdb    tvdb     Name
