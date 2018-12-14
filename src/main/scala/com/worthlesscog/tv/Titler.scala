@@ -1,6 +1,6 @@
 package com.worthlesscog.tv
 
-import java.io.{File, IOException}
+import java.io.File
 import java.nio.file.Paths
 
 import com.worthlesscog.tv.data._
@@ -149,7 +149,7 @@ object Titler {
         op match {
             case Op.download =>
                 for {
-                    auth <- loadAuth(home resolve CONFIG toFile)
+                    auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     f = download(db, auth, id, seasons, lang)
                     s <- Await.result(f, Duration.Inf)
                     status <- player.generate(s, dir)
@@ -157,7 +157,7 @@ object Titler {
 
             case Op.merge =>
                 for {
-                    auth <- loadAuth(home resolve CONFIG toFile)
+                    auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     f = download(db, auth, id, seasons, lang)
                     f2 = download(db2, auth, id2, seasons, lang)
                     s <- Await.result(f, Duration.Inf)
@@ -172,7 +172,7 @@ object Titler {
 
             case Op.search =>
                 for {
-                    auth <- loadAuth(home resolve CONFIG toFile)
+                    auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     f = search(db, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
                     status <- tabulateSearchResults(db, r)
@@ -180,7 +180,7 @@ object Titler {
 
             case Op.searchAll =>
                 for {
-                    auth <- loadAuth(home resolve CONFIG toFile)
+                    auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     f = search(Tmdb, search, auth, lang)
                     f2 = search(Tvdb, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
@@ -190,12 +190,8 @@ object Titler {
         }
 
     private def loadAuth(f: File) =
-        try
-            using(Source fromFile f) {
-                _.getLines.flatMap(keyPair).toMap |> asRight
-            }
-        catch {
-            case x: IOException => leftException(x)
+        using(Source fromFile f) {
+            _.getLines.flatMap(keyPair).toMap |> asRight
         }
 
     private def keyPair(s: String) =

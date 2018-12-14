@@ -1,5 +1,6 @@
 package com.worthlesscog
 
+import java.io.IOException
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.Logger
@@ -48,6 +49,13 @@ package object tv {
     def info(s: String) = log.info(s)
 
     def leftException(x: Exception) = x.toString + "\n" |> asLeft
+
+    def maybeIO[A](f: => Maybe[A]) =
+        try
+            f
+        catch {
+            case x: IOException => leftException(x)
+        }
 
     def using[A <: {def close() : Unit}, B](closeable: A)(f: A => B): B =
         try f(closeable) finally closeable.close()

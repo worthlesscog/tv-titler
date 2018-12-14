@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 import java.io._
 import java.nio.charset.{Charset, StandardCharsets}
 
-import com.worthlesscog.tv.{asLeft, asRight, info, leftException, using, Maybe, Or, Pipe}
+import com.worthlesscog.tv.{asLeft, asRight, info, maybeIO, using, Maybe, Or, Pipe}
 import com.worthlesscog.tv.HttpOps.{getBytes, httpCode}
 import com.worthlesscog.tv.data._
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
@@ -98,13 +98,6 @@ object Mede8er extends MediaPlayer {
         val f = new File(dir, s + ".xml")
         maybeIO { formatAndCreate(f) }
     }
-
-    private def maybeIO[A](f: => Maybe[A]) =
-        try
-            f
-        catch {
-            case x: IOException => leftException(x)
-        }
 
     def fos(file: File) =
         new FileOutputStream(file)
