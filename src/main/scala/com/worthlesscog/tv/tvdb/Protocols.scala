@@ -4,6 +4,8 @@ import spray.json.DefaultJsonProtocol
 
 object Protocols extends DefaultJsonProtocol {
 
+    import com.worthlesscog.tv.optionStringFormat
+
     implicit val authnFormat = jsonFormat1(Authn)
 
     implicit val authzFormat = jsonFormat1(Authz)

@@ -4,6 +4,7 @@ import java.io.IOException
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.Logger
+import spray.json.{JsNull, JsString, JsValue, RootJsonFormat}
 
 package object tv {
 
@@ -30,14 +31,18 @@ package object tv {
         def |>[B](f: A => B): B = f(a)
     }
 
+    implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
+        def read(v: JsValue): Option[String] = v match {
+            case JsNull       => None
+            case JsString("") => None
+            case JsString(s)  => Some(s)
+        }
+
+        def write(s: Option[String]) = ???
+    }
+
     lazy val home = Paths.get(System.getProperty("user.home"))
     lazy val log = Logger("Titler")
-
-    def asLeft[T](t: T) = Left(t)
-    def asRight[T](t: T) = Right(t)
-
-    def lr[T](t: T) = t |> asLeft |> asRight
-    def rr[T](t: T) = t |> asRight |> asRight
 
     def asInt(s: String) =
         try {
@@ -45,6 +50,12 @@ package object tv {
         } catch {
             case _: NumberFormatException => s"$s is not a valid id\n" |> asLeft
         }
+
+    def asLeft[T](t: T) = Left(t)
+    def asRight[T](t: T) = Right(t)
+
+    def lr[T](t: T) = t |> asLeft |> asRight
+    def rr[T](t: T) = t |> asRight |> asRight
 
     def info(s: String) = log.info(s)
 
