@@ -82,7 +82,7 @@ object Tvdb extends TvDatabase {
             case Some(results) =>
                 results
                     .filter { r => r.id.nonEmpty && r.seriesName.nonEmpty }
-                    .map { r => SearchResult(r.id.get, r.seriesName.get, r.firstAired, None, None) } |> asRight
+                    .map { r => SearchResult(databaseId, r.id.get, r.seriesName.get, r.firstAired, None, None) } |> asRight
 
             case _ =>
                 Nil |> asRight

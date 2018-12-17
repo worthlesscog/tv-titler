@@ -1,6 +1,7 @@
 package com.worthlesscog.tv.data
 
 case class SearchResult(
+    source: String,
     id: Int,
     name: String,
     firstAirDate: Option[String],

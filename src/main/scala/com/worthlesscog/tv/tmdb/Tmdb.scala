@@ -88,7 +88,7 @@ object Tmdb extends TvDatabase {
         results
             .filter { r => r.id.nonEmpty && r.name.nonEmpty }
             .map {
-                r => ApiSearchResult(r.id.get, r.name.get, r.first_air_date, r.original_language, r.genre_ids map { _ map genres })
+                r => ApiSearchResult(databaseId, r.id.get, r.name.get, r.first_air_date, r.original_language, r.genre_ids map { _ map genres })
             } |> asRight
 
     def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
