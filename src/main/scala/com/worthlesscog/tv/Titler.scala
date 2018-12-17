@@ -50,11 +50,13 @@ object Titler {
     // val args3 = Array("-target", "E:\\tv", "-db", "tvdb", "265766", "-seasons", "2-")
     // val args4 = Array("-target", "E:\\tv", "-db", "tvdb", "penny-dreadful")
 
+    // val args1 = Array("-searchall", "Books")
     // val args1 = Array("-searchall", "Penny")
     // val args1 = Array("-searchall", "Mirror")
-    // val args1 = Array("-searchall", "The Black")
 
     // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "penny-dreadful")
+
+    // XXX - write json doodads to convert empty string into None and empty seq/list into None
 
     def main(args: Array[String]): Unit = {
         val status = for {
@@ -175,17 +177,18 @@ object Titler {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     f = search(db, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
-                    status <- tabulateSearchResults(db, r)
+                    status <- tabulateSearch(r)
                 } yield status
 
             case Op.searchAll =>
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
+                    // XXX - fix this
                     f = search(Tmdb, search, auth, lang)
                     f2 = search(Tvdb, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
                     r2 <- Await.result(f2, Duration.Inf)
-                    status <- tabulateSearchResults(Tmdb, Tvdb, r, r2)
+                    status <- tabulateSearch(r ++ r2)
                 } yield status
         }
 
@@ -225,74 +228,45 @@ object Titler {
         } yield results
     }
 
-    private def tabulateSearchResults(d: TvDatabase, r: Seq[SearchResult]) = {
-        val fmt = rjs(genreLen(r) + 3) + "   " +
-            ljs(langLen(r) + 3) +
-            ljs(airLen(r) + 3) +
-            ljs(idLen(r, d.databaseId.length) + 3) +
-            "%s\n"
+    private def tabulateSearch(rs: Seq[SearchResult]) = {
+        def longestString(s: Seq[String]) = { s sortBy { -_.length } }.headOption.getOrElse("")
 
-        fmt.format("Genre", "Lang", "Aired", d.databaseId, "Name") |> info
-        ordered(r) foreach { r =>
-            fmt.format(opt(r.genres map commaSeperated), opt(r.language), opt(r.firstAirDate), r.id.toString, r.name) |> info
-        }
-
-        DONE |> asRight
-    }
-
-    private def genreLen(s: Seq[SearchResult]) = s.flatMap { _.genres map commaSeperated } |> longest max 5
-    private def commaSeperated(seq: Seq[_]) = seq mkString ", "
-    private def longest[T](s: Seq[T]) = (s map { _.toString length }) |> max
-    private def max(s: Seq[Int]) = if (s isEmpty) 0 else s max
-    private def langLen(s: Seq[SearchResult]) = s.flatMap { _.language } |> longest max 4
-    private def airLen(s: Seq[SearchResult]) = s.flatMap { _.firstAirDate } |> longest max 5
-    private def idLen(s: Seq[SearchResult], min: Int) = s.map { _.id } |> longest max min
-    private def rjs(width: Int) = "%" + width + "s"
-    private def ljs(width: Int) = "%-" + width + "s"
-    private def ordered(r: Seq[SearchResult]) = r sortBy { r => (r.name, r.firstAirDate) }
-    private def opt[T](t: Option[T]) = t.fold { "" } { _.toString }
-
-    private def tabulateSearchResults(d: TvDatabase, d2: TvDatabase, r: Seq[SearchResult], r2: Seq[SearchResult]) = {
-        def interleave(fmt: String, s: Seq[SearchResult], s2: Seq[SearchResult]): Unit =
-            if (s2 isEmpty)
-                s foreach { r => format(fmt, r, r.id.toString, "") }
-            else if (s isEmpty)
-                s2 foreach { r => format(fmt, r, "", r.id.toString) }
-            else (s.head.name, s2.head.name) match {
-                case (n1, n2) if n1 < n2 =>
-                    format(fmt, s.head, s.head.id.toString, "")
-                    interleave(fmt, s.tail, s2)
-
-                case (n1, n2) if n1 == n2 =>
-                    if (s.head.firstAirDate == s2.head.firstAirDate) {
-                        format(fmt, s.head, s.head.id.toString, s2.head.id.toString)
-                        interleave(fmt, s.tail, s2.tail)
-                    } else {
-                        format(fmt, s.head, s.head.id.toString, "")
-                        interleave(fmt, s.tail, s2)
-                    }
+        def tab(fmt: String, ids: Seq[String], rs: Seq[SearchResult]): Unit =
+            rs match {
+                case h :: t =>
+                    val lc = h.name.toLowerCase
+                    val ms = h :: t.takeWhile { r => (r.name.toLowerCase == lc) && (r.firstAirDate == h.firstAirDate) }
+                    val g = { ms flatMap { _.genres map commaSeperated } } |> longestString
+                    val l = { ms flatMap { _.language } } |> longestString
+                    val a = { ms flatMap { _.firstAirDate } } |> longestString
+                    val d = ids map { i => ms.find { _.source == i }.fold("") { _.id.toString } }
+                    val args = Seq(g, l, a) ++ d ++ Seq(h.name)
+                    fmt.format(args: _*) |> info
+                    tab(fmt, ids, t.drop(ms.size - 1))
 
                 case _ =>
-                    format(fmt, s2.head, "", s2.head.id.toString)
-                    interleave(fmt, s, s2.tail)
             }
 
-        def format(fmt: String, r: SearchResult, id1: String, id2: String) =
-            fmt.format(opt(r.genres map commaSeperated), opt(r.language), opt(r.firstAirDate), id1, id2, r.name) |> info
+        val s = 3
+        val ids = rs.map { _.source }.distinct sorted
+        val dbs = ids map { d => s + idLen(rs filter { _.source == d }, d.length) |> ljs }
+        val fmt = Seq(rjs(genreLen(rs) + s) + (" " * s) + ljs(langLen(rs) + s) + ljs(airLen(rs) + s)) ++ dbs ++ Seq("%s\n") mkString
 
-        val both = r ++ r2
-        val fmt = rjs(genreLen(both) + 3) + "   " +
-            ljs(langLen(both) + 3) +
-            ljs(airLen(both) + 3) +
-            ljs(idLen(r, d.databaseId.length) + 3) +
-            ljs(idLen(r2, d2.databaseId.length) + 3) +
-            "%s\n"
-
-
-        fmt.format("Genre", "Lang", "Aired", d.databaseId, d2.databaseId, "Name") |> info
-        interleave(fmt, ordered(r), ordered(r2))
+        val head = Seq("Genre", "Lang", "Aired") ++ ids ++ Seq("Name")
+        fmt.format(head: _*) |> info
+        tab(fmt, ids, rs sortBy { r => (r.name.toLowerCase, r.firstAirDate, r.source) })
 
         DONE |> asRight
     }
+
+    private def idLen(s: Seq[SearchResult], min: Int) = s.map { _.id } |> longest max min
+    private def longest[T](s: Seq[T]) = (s map { _.toString length }) |> max
+    private def max(s: Seq[Int]) = if (s isEmpty) 0 else s max
+    private def genreLen(s: Seq[SearchResult]) = s.flatMap { _.genres map commaSeperated } |> longest max 5
+    private def commaSeperated(seq: Seq[_]) = seq mkString ", "
+    private def langLen(s: Seq[SearchResult]) = s.flatMap { _.language } |> longest max 4
+    private def airLen(s: Seq[SearchResult]) = s.flatMap { _.firstAirDate } |> longest max 5
+    private def rjs(width: Int) = "%" + width + "s"
+    private def ljs(width: Int) = "%-" + width + "s"
 
 }
