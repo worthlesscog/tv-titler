@@ -1,8 +1,8 @@
 package com.worthlesscog.tv.data
 
-case class SearchResult(
+case class SearchResult[T](
     source: String,
-    id: Int,
+    id: T,
     name: String,
     firstAirDate: Option[String],
     language: Option[String],

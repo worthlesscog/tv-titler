@@ -160,6 +160,7 @@ object Titler {
             case Op.merge =>
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
+                    // XXX - fix this
                     f = download(db, auth, id, seasons, lang)
                     f2 = download(db2, auth, id2, seasons, lang)
                     s <- Await.result(f, Duration.Inf)
@@ -181,9 +182,11 @@ object Titler {
                 } yield status
 
             case Op.searchAll =>
+                "Searching " + databases.map { case (_, v) => v.databaseName }.mkString("", ", ", " ...\n") |> info
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     // XXX - fix this
+                    // fs = databases map { case (_, v) => search(v, search, auth, lang) }
                     f = search(Tmdb, search, auth, lang)
                     f2 = search(Tvdb, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
@@ -228,10 +231,10 @@ object Titler {
         } yield results
     }
 
-    private def tabulateSearch(rs: Seq[SearchResult]) = {
+    private def tabulateSearch(rs: Seq[SearchResult[_]]) = {
         def longestString(s: Seq[String]) = { s sortBy { -_.length } }.headOption.getOrElse("")
 
-        def tab(fmt: String, ids: Seq[String], rs: Seq[SearchResult]): Unit =
+        def tab(fmt: String, ids: Seq[String], rs: Seq[SearchResult[_]]): Unit =
             rs match {
                 case h :: t =>
                     val lc = h.name.toLowerCase
@@ -259,13 +262,13 @@ object Titler {
         DONE |> asRight
     }
 
-    private def idLen(s: Seq[SearchResult], min: Int) = s.map { _.id } |> longest max min
+    private def idLen(s: Seq[SearchResult[_]], min: Int) = s.map { _.id } |> longest max min
     private def longest[T](s: Seq[T]) = (s map { _.toString length }) |> max
     private def max(s: Seq[Int]) = if (s isEmpty) 0 else s max
-    private def genreLen(s: Seq[SearchResult]) = s.flatMap { _.genres map commaSeperated } |> longest max 5
+    private def genreLen(s: Seq[SearchResult[_]]) = s.flatMap { _.genres map commaSeperated } |> longest max 5
     private def commaSeperated(seq: Seq[_]) = seq mkString ", "
-    private def langLen(s: Seq[SearchResult]) = s.flatMap { _.language } |> longest max 4
-    private def airLen(s: Seq[SearchResult]) = s.flatMap { _.firstAirDate } |> longest max 5
+    private def langLen(s: Seq[SearchResult[_]]) = s.flatMap { _.language } |> longest max 4
+    private def airLen(s: Seq[SearchResult[_]]) = s.flatMap { _.firstAirDate } |> longest max 5
     private def rjs(width: Int) = "%" + width + "s"
     private def ljs(width: Int) = "%-" + width + "s"
 
