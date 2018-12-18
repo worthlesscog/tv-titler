@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.Logger
-import spray.json.{JsNull, JsString, JsValue, RootJsonFormat}
+import spray.json.{JsString, JsValue, RootJsonFormat}
 
 package object tv {
 
@@ -33,9 +33,8 @@ package object tv {
 
     implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
         def read(v: JsValue): Option[String] = v match {
-            case JsNull       => None
-            case JsString("") => None
-            case JsString(s)  => Some(s)
+            case JsString(s) => Some(s)
+            case _           => None
         }
 
         def write(s: Option[String]) = ???
