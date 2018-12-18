@@ -3,10 +3,12 @@ name := "TV Titler"
 scalaVersion := "2.12.7"
 
 scalacOptions ++= Seq(
-	"-deprecation", 
-	"-feature", 
-	"-language:postfixOps", 
-	"-language:reflectiveCalls")
+	"-deprecation",
+	"-feature",
+	"-language:postfixOps",
+	"-language:reflectiveCalls",
+	"-unchecked"
+)
 
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0"
