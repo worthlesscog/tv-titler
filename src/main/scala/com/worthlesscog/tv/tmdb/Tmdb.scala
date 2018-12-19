@@ -1,12 +1,13 @@
 package com.worthlesscog.tv.tmdb
 
-import com.worthlesscog.tv.{asInt, asLeft, asRight, Approx, Maybe, Or, Pairs, Pipe}
-import com.worthlesscog.tv.HttpOps.{getJson, httpCode}
+import com.worthlesscog.tv.{asInt, asLeft, asRight, jsInt, Approx, HttpOps, Maybe, Or, Pipe}
 import com.worthlesscog.tv.data.{Credentials, Role, Token, TvDatabase, TvEpisode, TvSeason, TvSeries, SearchResult => ApiSearchResult}
 import com.worthlesscog.tv.tmdb.Protocols._
-import spray.json.{JsNumber, JsValue}
+import spray.json.JsValue
 
-object Tmdb extends TvDatabase {
+class Tmdb extends TvDatabase {
+
+    this: HttpOps =>
 
     val API = "https://api.themoviedb.org/3/"
 
@@ -31,18 +32,11 @@ object Tmdb extends TvDatabase {
     def search(name: String)(implicit t: Token, lang: String) =
         for {
             // XXX - tmdb contains some miscategorized shows, use both sets of genres
-            movieGenres <- maybe(extractGenres, GENRES)
-            tvGenres <- maybe(extractGenres, TV_GENRES)
-            results <- downloadPages(seqResult, TV_SEARCH, Seq(("query", name)))
+            movieGenres <- maybe(extractGenres)(GENRES, auth)
+            tvGenres <- maybe(extractGenres)(TV_GENRES, auth)
+            results <- pages(seqResult, continue)(TV_SEARCH, auth ++ Seq(("query", name)))
             searchResults <- convertResults(results, movieGenres ++ tvGenres)
         } yield searchResults
-
-    private def maybe[T](convert: JsValue => Maybe[T], url: String, parameters: Pairs = Nil)(implicit t: Token, lang: String) =
-        getJson(url, parameters ++ auth) fold(
-            asLeft,
-            _ fold(
-                httpCode(url, parameters ++ auth),
-                convert))
 
     private def auth(implicit t: Token, lang: String) =
         Seq(("api_key", t.asInstanceOf[TmdbToken].apiKey), ("language", lang))
@@ -54,32 +48,8 @@ object Tmdb extends TvDatabase {
             .map(g => g.id.get -> g.name.get)
             .toMap |> asRight
 
-    private def downloadPages[T](convert: JsValue => Seq[T], url: String, parameters: Pairs)(implicit t: Token, lang: String) = {
-        def load(results: Seq[T], page: Int): Maybe[Seq[T]] =
-            maybe(asRight, url, parameters :+ ("page", page.toString)) match {
-                case Left(error) =>
-                    error |> asLeft
-
-                case Right(j) =>
-                    val rs = convert(j)
-                    val last = jsInt(j, "total_pages", page)
-                    if (page != last)
-                        load(results ++ rs, page + 1)
-                    else
-                        results ++ rs |> asRight
-            }
-
-        load(Nil, 1)
-    }
-
-    private def jsInt(v: JsValue, field: String, default: Int) =
-        jsField(v, field) map {
-            case JsNumber(n) => n.toInt
-            case _           => default
-        } get
-
-    private def jsField(v: JsValue, field: String) =
-        v.asJsObject.fields.get(field)
+    private def continue(n: Int, j: JsValue) =
+        jsInt(j, "page", 1) != jsInt(j, "total_pages", 1)
 
     private def seqResult(v: JsValue) =
         v.convertTo[SearchResult].results or Nil
@@ -94,12 +64,12 @@ object Tmdb extends TvDatabase {
     def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
         for {
             showId <- asInt(identifier)
-            config <- maybe(extractConfiguration, CONFIGURATION)
-            languages <- maybe(extractLanguages, CONFIGURATION + LANGUAGES)
-            show <- maybe(extractShow, TV_DETAILS + showId)
-            credits <- maybe(extractCredits, TV_DETAILS + showId + TV_CREDITS)
+            config <- maybe(extractConfiguration)(CONFIGURATION, auth)
+            languages <- maybe(extractLanguages)(CONFIGURATION + LANGUAGES, auth)
+            show <- maybe(extractShow)(TV_DETAILS + showId, auth)
+            credits <- maybe(extractCredits)(TV_DETAILS + showId + TV_CREDITS, auth)
             // XXX - waste unless you're downloading season #1
-            images <- maybe(extractShowImages, TV_DETAILS + showId + TV_IMAGES)(token, lang + ",null")
+            images <- maybe(extractShowImages)(TV_DETAILS + showId + TV_IMAGES, auth(token, lang + ",null"))
             requiredSeasons = seasonNumbers.getOrElse(1 to 99 toSet).toSeq.sorted
             availableSeasons = show.seasons.fold { 1 to 99 toSet } { _ flatMap { _.season_number } toSet }
             seq = requiredSeasons filter { availableSeasons contains }
@@ -128,7 +98,7 @@ object Tmdb extends TvDatabase {
         def load(tees: Seq[T], s: Seq[Int]): Maybe[Seq[T]] = {
             if (s isEmpty)
                 tees |> asRight
-            else maybe(f, TV_DETAILS + showId + TV_SEASON + s.head + tail) match {
+            else maybe(f)(TV_DETAILS + showId + TV_SEASON + s.head + tail, auth) match {
                 case Left(error) => error |> asLeft
                 case Right(t)    => load(tees :+ t, s.tail)
             }

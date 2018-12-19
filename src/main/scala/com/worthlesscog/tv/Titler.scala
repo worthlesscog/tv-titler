@@ -4,7 +4,9 @@ import java.io.File
 import java.nio.file.Paths
 
 import com.worthlesscog.tv.data._
+import com.worthlesscog.tv.maze.Maze
 import com.worthlesscog.tv.mede8er.Mede8er
+import com.worthlesscog.tv.omdb.Omdb
 import com.worthlesscog.tv.tmdb.Tmdb
 import com.worthlesscog.tv.tvdb.Tvdb
 
@@ -22,21 +24,28 @@ object Titler {
     val CONFIG = ".titler.cfg"
     val DONE = "Done\n"
 
+    val home = Paths.get(System.getProperty("user.home"))
+
     val commas = """(\d{1,2}(?:,\d{1,2})*)""".r
     val range = """(\d{1,2})(?:-(\d{1,2})?)?""".r
 
-    val databases = Map(Tmdb.databaseId -> Tmdb, Tvdb.databaseId -> Tvdb)
-    val home = Paths.get(System.getProperty("user.home"))
-    val players = Map(Mede8er.playerId -> Mede8er)
+    val omdb = new Omdb with ScalajHttpOps
+    val maze = new Maze with ScalajHttpOps
+    val tmdb = new Tmdb with ScalajHttpOps
+    val tvdb = new Tvdb with ScalajHttpOps
+    val databases = Map(maze.databaseId -> maze, omdb.databaseId -> omdb, tmdb.databaseId -> tmdb, tvdb.databaseId -> tvdb)
 
-    var db: TvDatabase = Tmdb
-    var db2: TvDatabase = Tvdb
+    val mede8er = new Mede8er with ScalajHttpOps
+    val players = Map(mede8er.playerId -> mede8er)
+
+    var db: TvDatabase = tmdb
+    var db2: TvDatabase = tvdb
     var dir = new File(".")
     var id = ""
     var id2 = ""
     var lang = "en"
     var op = Op.noop
-    var player: MediaPlayer = Mede8er
+    var player: MediaPlayer = mede8er
     var resize = ""
     var search = ""
     var seasons: Option[Set[Int]] = None
@@ -56,7 +65,7 @@ object Titler {
 
     // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "penny-dreadful")
 
-    // XXX - write json doodads to convert empty string into None and empty seq/list into None
+    // XXX - write json doodads to convert empty seq/list into None
 
     def main(args: Array[String]): Unit = {
         val status = for {
@@ -187,11 +196,15 @@ object Titler {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
                     // XXX - fix this
                     // fs = databases map { case (_, v) => search(v, search, auth, lang) }
-                    f = search(Tmdb, search, auth, lang)
-                    f2 = search(Tvdb, search, auth, lang)
+                    f = search(tmdb, search, auth, lang)
+                    f2 = search(tvdb, search, auth, lang)
+                    f3 = search(maze, search, auth, lang)
+                    f4 = search(omdb, search, auth, lang)
                     r <- Await.result(f, Duration.Inf)
                     r2 <- Await.result(f2, Duration.Inf)
-                    status <- tabulateSearch(r ++ r2)
+                    r3 <- Await.result(f3, Duration.Inf)
+                    r4 <- Await.result(f4, Duration.Inf)
+                    status <- tabulateSearch(r ++ r2 ++ r3 ++ r4)
                 } yield status
         }
 

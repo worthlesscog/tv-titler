@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.Logger
-import spray.json.{JsString, JsValue, RootJsonFormat}
+import spray.json.{JsNumber, JsString, JsValue, RootJsonFormat}
 
 package object tv {
 
@@ -57,6 +57,21 @@ package object tv {
     def rr[T](t: T) = t |> asRight |> asRight
 
     def info(s: String) = log.info(s)
+
+    def jsInt(v: JsValue, field: String, default: Int) =
+        jsField(v, field) map {
+            case JsNumber(n) => n.toInt
+            case _           => default
+        } get
+
+    def jsStringToInt(v: JsValue, field: String, default: Int) =
+        jsField(v, field) map {
+            case JsString(n) => n.toInt
+            case _           => default
+        } get
+
+    def jsField(v: JsValue, field: String) =
+        v.asJsObject.fields.get(field)
 
     def leftException(x: Exception) = x.toString + "\n" |> asLeft
 

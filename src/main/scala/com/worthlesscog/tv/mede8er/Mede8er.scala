@@ -5,8 +5,7 @@ import java.awt.image.BufferedImage
 import java.io._
 import java.nio.charset.{Charset, StandardCharsets}
 
-import com.worthlesscog.tv.{asLeft, asRight, info, maybeIO, using, Maybe, Or, Pipe}
-import com.worthlesscog.tv.HttpOps.{getBytes, httpCode}
+import com.worthlesscog.tv.{asLeft, asRight, info, maybeIO, using, HttpOps, Maybe, Or, Pipe}
 import com.worthlesscog.tv.data._
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
 import org.apache.commons.text.StringEscapeUtils
@@ -16,7 +15,9 @@ import scala.xml.{Elem, PrettyPrinter, XML}
 // XXX - look for option folds
 // XXX - check tail calls are in fact tail calls
 
-object Mede8er extends MediaPlayer {
+class Mede8er extends MediaPlayer {
+
+    this: HttpOps =>
 
     val DONE = "Done\n"
     val UNKNOWN = "??"

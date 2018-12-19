@@ -2,8 +2,7 @@ package com.worthlesscog.tv.tvdb
 
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
-import com.worthlesscog.tv.{asInt, asLeft, asRight, Maybe, Or, Pairs, Pipe}
-import com.worthlesscog.tv.HttpOps.{getJson, httpCode, postJsonToJson}
+import com.worthlesscog.tv.{asInt, asLeft, asRight, jsField, HttpOps, Maybe, Or, Pairs, Pipe}
 import com.worthlesscog.tv.data._
 import com.worthlesscog.tv.tvdb.Protocols._
 import spray.json.{pimpAny, JsValue}
@@ -14,7 +13,9 @@ import spray.json.{pimpAny, JsValue}
 
 // XXX - only fanart supports the graphical/text subKey, consequently other types are an uncategorized mixture
 // XXX - the same item can have different ratings on site and in the API
-object Tvdb extends TvDatabase {
+class Tvdb extends TvDatabase {
+
+    this: HttpOps =>
 
     val API = "https://api.thetvdb.com/"
     val ART_URL = "https://www.thetvdb.com/banners/"
@@ -57,16 +58,9 @@ object Tvdb extends TvDatabase {
 
     def search(name: String)(implicit t: Token, lang: String) =
         for {
-            search <- maybe(convertSeriesSearch, SEARCH, Seq(("name", name)))
+            search <- maybe(convertSeriesSearch)(SEARCH, Seq(("name", name)), auth)
             results <- extractSearchResults(search)
         } yield results
-
-    private def maybe[T](convert: JsValue => Maybe[T], url: String, parameters: Pairs = Nil)(implicit t: Token, lang: String) =
-        getRawJson(url, parameters) fold(
-            asLeft,
-            _ fold(
-                httpCode(url, parameters),
-                convert))
 
     private def getRawJson(url: String, parameters: Pairs = Nil, headers: Pairs = Nil)(implicit t: Token, lang: String) =
         getJson(url, parameters, headers ++ auth)
@@ -95,22 +89,22 @@ object Tvdb extends TvDatabase {
 
             case Right(id) =>
                 for {
-                    series <- maybe(extractSeries, SERIES + id)
+                    series <- maybe(extractSeries)(SERIES + id, headers = auth)
                     actors <- getActors(id)
                     requiredSeasons = seasonNumbers.getOrElse(1 to 99 toSet).toSeq.sorted
-                    availableSeasons <- maybe(extractAvailableSeasons, SERIES + id + EPISODES_SUMMARY)
+                    availableSeasons <- maybe(extractAvailableSeasons)(SERIES + id + EPISODES_SUMMARY, headers = auth)
                     seasons = requiredSeasons filter { availableSeasons contains } map { _.toString }
-                    episodes <- download(paginatedDownload, SERIES + id + EPISODES_QUERY, Nil, "airedSeason", seasons)
+                    episodes <- download(pages(extractSeriesEpisodes, continue), SERIES + id + EPISODES_QUERY, Nil, auth, "airedSeason", seasons)
                     fanart <- downloadLanguageImages(SERIES + id + IMAGES_QUERY, keyType(FANART))
                     posters <- downloadLanguageImages(SERIES + id + IMAGES_QUERY, keyType(POSTER))
-                    images <- download(downloadLanguageImages, SERIES + id + IMAGES_QUERY, keyType(SEASON), "subKey", seasons)
+                    images <- download(downloadLanguageImages, SERIES + id + IMAGES_QUERY, keyType(SEASON), Nil, "subKey", seasons)
                     series <- buildTvSeries(series, actors, episodes, fanart ++ posters ++ images)
                 } yield series
         }
 
     private def searchBySlug(slug: String)(implicit token: Token, lang: String) =
         for {
-            search <- maybe(convertSeriesSearch, SEARCH, Seq(("slug", slug)))
+            search <- maybe(convertSeriesSearch)(SEARCH, Seq(("slug", slug)), auth)
             id <- extractSeriesId(search)
         } yield id
 
@@ -146,60 +140,39 @@ object Tvdb extends TvDatabase {
             case _            => NO_DATA |> asLeft
         }
 
-    private def extractAvailableSeasons(v: JsValue) = {
+    private def extractAvailableSeasons(v: JsValue) =
         v.convertTo[SeriesEpisodesSummary].data.airedSeasons match {
             case Some(Nil)     => Set.empty[Int] |> asRight
             case Some(seasons) => seasons.map { _.toInt }.toSet |> asRight
             case _             => Set.empty[Int] |> asRight
         }
-    }
 
-    private def download[T](f: (String, Pairs) => Maybe[Seq[T]], url: String, parameters: Pairs, label: String, ps: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
+    private def extractSeriesEpisodes(v: JsValue) =
+        v.convertTo[SeriesEpisodes].data or Nil
+
+    private def continue(n: Int, j: JsValue) =
+        jsField(j, "links").fold(false) { links =>
+            jsField(links, "first").fold(false) { f =>
+                jsField(links, "last").fold(false) { f != }
+            }
+        }
+
+    private def download[T](f: (String, Pairs, Pairs) => Maybe[Seq[T]], url: String, parameters: Pairs, headers: Pairs, label: String, ps: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
         if (ps isEmpty)
             tees |> asRight
-        else f(url, parameters :+ (label, ps.head)) match {
+        else f(url, parameters :+ (label, ps.head), headers) match {
             case Left(error) => error |> asLeft
-            case Right(seq)  => download(f, url, parameters, label, ps.tail, tees ++ seq)
+            case Right(seq)  => download(f, url, parameters, headers, label, ps.tail, tees ++ seq)
         }
 
     private def keyType(t: String) =
         Seq(("keyType", t))
 
-    private def paginatedDownload(url: String, parameters: Pairs = Nil)(implicit t: Token, lang: String) = {
-        def load(episodes: Seq[Episode], page: Int): Maybe[Seq[Episode]] = {
-            val p = parameters :+ ("page", page.toString)
-            getRawJson(url, p) match {
-                case Left(error) =>
-                    error |> asLeft
-
-                case Right(Left(code)) =>
-                    httpCode(url, p)(code)
-
-                case Right(Right(j)) =>
-                    val e = j.convertTo[SeriesEpisodes]
-                    val last = e.links.fold(page) { _.last or page }
-                    e.data match {
-                        case Some(es) =>
-                            val f = es filter (_.airedSeason nonEmpty)
-                            if (page != last)
-                                load(episodes ++ f, page + 1)
-                            else
-                                (episodes ++ f) |> asRight
-
-                        case _ =>
-                            episodes |> asRight
-                    }
-            }
-        }
-
-        load(Nil, 1)
-    }
-
-    private def downloadLanguageImages(url: String, parameters: Pairs)(implicit t: Token, lang: String) = {
+    private def downloadLanguageImages(url: String, parameters: Pairs, headers: Pairs = Nil)(implicit t: Token) = {
         def load(results: Seq[ImageResult], l: Seq[String]): Maybe[Seq[ImageResult]] =
             if (l isEmpty)
                 results |> asRight
-            else getRawJson(url, parameters)(t, l.head) match {
+            else getRawJson(url, parameters, headers)(t, l.head) match {
                 case Left(error) =>
                     error |> asLeft
 
