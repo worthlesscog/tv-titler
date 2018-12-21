@@ -14,12 +14,13 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.io.Source
-
-object Op extends Enumeration {
-    val download, merge, noop, resize, search, searchAll = Value
-}
+import scala.util.Success
 
 object Titler {
+
+    object Op extends Enumeration {
+        val download, merge, noop, resize, search, searchAll = Value
+    }
 
     val CONFIG = ".titler.cfg"
     val DONE = "Done\n"
@@ -161,9 +162,10 @@ object Titler {
             case Op.download =>
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
+                    // XXX - fix this
                     f = download(db, auth, id, seasons, lang)
-                    s <- Await.result(f, Duration.Inf)
-                    status <- player.generate(s, dir)
+                    r <- Await.result(f, Duration.Inf)
+                    status <- player.generate(r, dir)
                 } yield status
 
             case Op.merge =>
@@ -185,8 +187,8 @@ object Titler {
             case Op.search =>
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
-                    f = search(db, search, auth, lang)
-                    r <- Await.result(f, Duration.Inf)
+                    f = Seq(search(db, search, auth, lang))
+                    r = searches(f)
                     status <- tabulateSearch(r)
                 } yield status
 
@@ -194,17 +196,9 @@ object Titler {
                 "Searching " + databases.map { case (_, v) => v.databaseName }.mkString("", ", ", " ...\n") |> info
                 for {
                     auth <- maybeIO { loadAuth(home resolve CONFIG toFile) }
-                    // XXX - fix this
-                    // fs = databases map { case (_, v) => search(v, search, auth, lang) }
-                    f = search(tmdb, search, auth, lang)
-                    f2 = search(tvdb, search, auth, lang)
-                    f3 = search(maze, search, auth, lang)
-                    f4 = search(omdb, search, auth, lang)
-                    r <- Await.result(f, Duration.Inf)
-                    r2 <- Await.result(f2, Duration.Inf)
-                    r3 <- Await.result(f3, Duration.Inf)
-                    r4 <- Await.result(f4, Duration.Inf)
-                    status <- tabulateSearch(r ++ r2 ++ r3 ++ r4)
+                    f = databases.values map { search(_, search, auth, lang) }
+                    r = searches(f)
+                    status <- tabulateSearch(r)
                 } yield status
         }
 
@@ -242,6 +236,14 @@ object Titler {
             token <- authenticate(d, auth)
             results <- d.search(search)(token, lang)
         } yield results
+    }
+
+    def searches(fs: Iterable[Future[Either[String, Seq[SearchResult[_]]]]]) = {
+        val s = Future
+            .sequence(fs map { _ transform { Success(_) } })
+            .map { _ collect { case Success(Right(r)) => r } reduce { _ ++ _ } }
+
+        Await.result(s, Duration.Inf)
     }
 
     private def tabulateSearch(rs: Seq[SearchResult[_]]) = {
