@@ -33,8 +33,9 @@ package object tv {
 
     implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
         def read(v: JsValue): Option[String] = v match {
-            case JsString(s) => Some(s)
-            case _           => None
+            case JsString("") => None
+            case JsString(s)  => Some(s)
+            case _            => None
         }
 
         def write(s: Option[String]) = ???
