@@ -31,11 +31,11 @@ package object tv {
         def |>[B](f: A => B): B = f(a)
     }
 
+    // XXX - this is probably slooow
     implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
         def read(v: JsValue): Option[String] = v match {
-            case JsString("") => None
-            case JsString(s)  => Some(s)
-            case _            => None
+            case JsString(s) if s.trim.nonEmpty => Some(s trim)
+            case _                              => None
         }
 
         def write(s: Option[String]) = ???
