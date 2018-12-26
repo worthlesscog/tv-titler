@@ -308,7 +308,7 @@ class Mede8er extends MediaPlayer {
             year = "")
 
     private def castNames(cast: Seq[Role]) =
-        cast flatMap { _.name }
+        cast flatMap { _.name } distinct
 
     private def director(crew: Seq[Role]) =
         crew find { _.role contains "Director" } flatMap { _.name } or ""
