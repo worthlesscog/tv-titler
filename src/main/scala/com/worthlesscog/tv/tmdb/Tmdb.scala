@@ -3,6 +3,7 @@ package com.worthlesscog.tv.tmdb
 import com.worthlesscog.tv.{asInt, asLeft, asRight, jsInt, Approx, HttpOps, Maybe, Or, Pipe}
 import com.worthlesscog.tv.data.{Credentials, Role, Token, TvDatabase, TvEpisode, TvSeason, TvSeries, SearchResult => ApiSearchResult}
 import com.worthlesscog.tv.tmdb.Protocols._
+import com.worthlesscog.tv.TextUtils.allTidy
 import spray.json.JsValue
 
 class Tmdb extends TvDatabase {
@@ -121,7 +122,7 @@ class Tmdb extends TvDatabase {
             language = show.original_language flatMap { lang => languages.items find { _.iso_639_1 contains lang } flatMap { _.english_name } },
             name = show.name,
             numberOfSeasons = show.number_of_seasons,
-            overview = show.overview,
+            overview = show.overview map sanitize,
             posterUrl = highestRated(images.posters, 2.0 / 3.0) |> posterUrl,
             rating = show.vote_average,
             runtime = show.episode_run_time map { _.min },
@@ -153,9 +154,6 @@ class Tmdb extends TvDatabase {
         }
     }
 
-    private def flatGenres(genres: Seq[Genre]) =
-        genres flatMap { _.name map { s => s split " & " } } flatten
-
     private def backdropUrl(image: Option[Image])(implicit config: Configuration) =
         image flatMap {
             _.file_path flatMap { p =>
@@ -174,6 +172,12 @@ class Tmdb extends TvDatabase {
 
     private def longest(seq: Seq[String]) =
         seq maxBy { _.length }
+
+    private def flatGenres(genres: Seq[Genre]) =
+        genres flatMap { _.name map { s => s split " & " } } flatten
+
+    private def sanitize(s: String) =
+        s |> allTidy
 
     private def posterUrl(image: Option[Image])(implicit config: Configuration) =
         image flatMap {
@@ -201,7 +205,7 @@ class Tmdb extends TvDatabase {
             episodes = season.episodes map buildTvEpisodes(combinedCast, combinedCrew),
             number = season.season_number,
             numberOfEpisodes = synopsis flatMap { _.episode_count },
-            overview = season.overview,
+            overview = season.overview map sanitize,
             posterUrl = images flatMap { s => highestRated(s.posters, 2.0 / 3.0) |> posterUrl })
     }
 
@@ -219,7 +223,7 @@ class Tmdb extends TvDatabase {
             crew = allCrew map crewToRole,
             name = episode.name,
             number = episode.episode_number,
-            overview = episode.overview,
+            overview = episode.overview map sanitize,
             screenshotUrl = stillUrl(episode.still_path),
             rating = episode.vote_average,
             votes = episode.vote_count)

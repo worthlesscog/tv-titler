@@ -8,12 +8,20 @@ import java.nio.charset.{Charset, StandardCharsets}
 import com.worthlesscog.tv.{asLeft, asRight, info, maybeIO, using, HttpOps, Maybe, Or, Pipe}
 import com.worthlesscog.tv.data._
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
-import org.apache.commons.text.StringEscapeUtils
 
 import scala.xml.{Elem, PrettyPrinter, XML}
 
 // XXX - look for option folds
 // XXX - check tail calls are in fact tail calls
+
+// XXX - still possibly needed for sanitize
+//       long text
+//       generic text
+//       (ACTOR NAME)
+//       (SPECIAL GUEST STAR..)
+//       "... word.New sentence" - what about "A.C.R.O.N.Y.M.S." ?
+//       Non-unicode
+//       embedded HTML tags for italics etc.?
 
 class Mede8er extends MediaPlayer {
 
@@ -188,7 +196,7 @@ class Mede8er extends MediaPlayer {
             date = s1.airDate or s2.airDate or "",
             director = "",
             genres = s1.genres or s2.genres or Nil,
-            plot = sanitize(s1.overview or s2.overview or ""),
+            plot = s1.overview or s2.overview or "",
             rating = 10 * (s1.rating or s2.rating or 0.0) toInt,
             runtime = (s1.runtime or s2.runtime).fold { UNKNOWN } { _.toString },
             title = s1.name or s2.name get,
@@ -216,42 +224,6 @@ class Mede8er extends MediaPlayer {
 
     private def actor(s: String) =
         <actor>{s}</actor>
-
-    // XXX -
-    //       controls
-    //       (voice of Rachael Harris)
-    //       (guest star ...)
-    //       (Paul Giamatti)
-    //       multi-spaces
-    //       multi-dashes
-    //       floating .
-    //       floating ;
-    //       floating ,
-    //       """"
-    //
-    //       long text
-    //       generic text
-    //       (ACTOR NAME)
-    //       (SPECIAL GUEST STAR..)
-    //       "... word.New sentence" - what about "A.C.R.O.N.Y.M.S." ?
-    //       Non-unicode
-    //       embedded HTML tags for italics etc.?
-    private def sanitize(s: String) =
-        StringEscapeUtils.unescapeXml(s)
-            .replace('\n', ' ')
-            // .filterNot(_ < ' ')
-            // .filter(isPrintable)
-            .filterNot(_.isControl)
-            .replaceAll("""\(voice +of +.*?\)""", "")
-            .replaceAll("""\(guest +star +.*?\)""", "")
-            .replaceAll("""\(\p{Upper}\p{Lower}+ +\p{Upper}\p{Lower}+\)""", "")
-            .replaceAll(" +", " ")
-            .replaceAll("-{2,}", "-")
-            .replaceAll(""" \.""", """\.""")
-            .replaceAll(" ;", ";")
-            .replaceAll(" ,", ",")
-            .replaceAll("""""""", """"""")
-            .trim
 
     // private def isPrintable(c: Char) =
     //     !Character.isISOControl(c) && Option(Character.UnicodeBlock.of(c)).fold(false)(_ ne Character.UnicodeBlock.SPECIALS)
@@ -293,7 +265,7 @@ class Mede8er extends MediaPlayer {
             date = s.airDate or t.airDate or "",
             director = "",
             genres = genres or Nil,
-            plot = sanitize(s.overview or t.overview or ""),
+            plot = s.overview or t.overview or "",
             rating = 10 * rating toInt,
             runtime = runtime.fold { UNKNOWN } { _.toString },
             title = title,
@@ -325,7 +297,7 @@ class Mede8er extends MediaPlayer {
             date = e.airDate or f.airDate or "",
             director = (e.crew or f.crew).fold { "" } { director },
             genres = genres or Nil,
-            plot = sanitize(e.overview or f.overview or ""),
+            plot = e.overview or f.overview or "",
             rating = (e.rating or f.rating).fold(0) { 10 * _ toInt },
             runtime = runtime.fold { UNKNOWN } { _.toString },
             title = e.name or f.name or "",

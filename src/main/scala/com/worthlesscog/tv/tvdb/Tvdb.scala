@@ -4,6 +4,7 @@ import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
 import com.worthlesscog.tv.{asInt, asLeft, asRight, jsField, HttpOps, Maybe, Or, Pairs, Pipe}
 import com.worthlesscog.tv.data._
+import com.worthlesscog.tv.TextUtils.allTidy
 import com.worthlesscog.tv.tvdb.Protocols._
 import spray.json.{pimpAny, JsValue}
 
@@ -207,7 +208,7 @@ class Tvdb extends TvDatabase {
             language = None,
             name = s.seriesName,
             numberOfSeasons = None,
-            overview = s.overview,
+            overview = s.overview map sanitize,
             posterUrl = highestRated(images, POSTER),
             rating = s.siteRating,
             runtime = s.runtime map { _.toInt },
@@ -241,6 +242,9 @@ class Tvdb extends TvDatabase {
             case Some(s)  => Some(ART_URL + s)
         }
 
+    private def sanitize(s: String) =
+        s |> allTidy
+
     private def buildTvSeasons(s: Series, episodes: Seq[Episode], actors: Seq[Actor], images: Seq[ImageResult]) =
         episodes.flatMap { _.airedSeason }.distinct.sorted map buildTvSeason(s, episodes, actors, images)
 
@@ -261,7 +265,7 @@ class Tvdb extends TvDatabase {
             crew = None,
             name = e.episodeName,
             number = e.airedEpisodeNumber,
-            overview = e.overview,
+            overview = e.overview map sanitize,
             screenshotUrl = artUrl(e.filename),
             rating = e.siteRating,
             votes = e.siteRatingCount
