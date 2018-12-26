@@ -34,6 +34,6 @@ object Protocols extends DefaultJsonProtocol {
     implicit val episodeFmt = jsonFormat10(Episode)
     implicit val seasonSynopsisFmt = jsonFormat4(SeasonSynopsis)
     implicit val seasonFmt = jsonFormat6(Season)
-    implicit val showFmt = jsonFormat13(Show)
+    implicit val showFmt = jsonFormat14(Show)
 
 }

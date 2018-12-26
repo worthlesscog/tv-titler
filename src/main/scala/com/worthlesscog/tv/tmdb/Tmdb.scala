@@ -127,6 +127,7 @@ class Tmdb extends TvDatabase {
             rating = show.vote_average,
             runtime = show.episode_run_time map { _.min },
             seasons = Some(buildTvSeasons(credits, seasons, show.seasons or Nil, seasonCredits, seasonImages)),
+            status = show.status,
             votes = show.vote_count) |> asRight
 
     // 1 highest rated, correct aspect and no language

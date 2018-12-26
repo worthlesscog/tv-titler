@@ -192,7 +192,11 @@ class Mede8er extends MediaPlayer {
     // XXX - for missing fields, examine supplied data to provide? i.e. number of seasons
     private def createSeriesXml(s1: TvSeries, s2: TvSeries) =
         titleXml(
-            cast = Seq(s1.language or s2.language or UNKNOWN, (s1.numberOfSeasons or s2.numberOfSeasons).fold { "?" } { _ + " season(s)" }), // XXX - Abuse cast list
+            cast = Seq(
+                s1.language or s2.language or UNKNOWN,
+                (s1.numberOfSeasons or s2.numberOfSeasons).fold { "?" } { _ + " season(s)" },
+                s1.status or s2.status or UNKNOWN
+            ), // XXX - Abuse cast list
             date = s1.airDate or s2.airDate or "",
             director = "",
             genres = s1.genres or s2.genres or Nil,

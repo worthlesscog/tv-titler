@@ -88,7 +88,7 @@ case class Show(
     poster_path: Option[String],
     // production_companies: Option[Seq[Company]],
     seasons: Option[Seq[SeasonSynopsis]],
-    // status: Option[String],
+    status: Option[String],
     // `type`: Option[String],
     vote_average: Option[Double],
     vote_count: Option[Int]

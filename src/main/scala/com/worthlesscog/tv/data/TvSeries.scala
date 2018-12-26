@@ -14,6 +14,7 @@ case class TvSeries(
     rating: Option[Double] = None,
     runtime: Option[Int] = None,
     seasons: Option[Seq[TvSeason]] = None,
+    status: Option[String] = None,
     votes: Option[Int] = None
 )
 

@@ -18,7 +18,7 @@ case class Show(
     // `type`: Option[String],
     language: Option[String],
     genres: Option[Seq[String]],
-    // status: Option[String],
+    status: Option[String],
     runtime: Option[Int],
     premiered: Option[String],
     // officialSite: Option[String],

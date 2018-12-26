@@ -55,9 +55,9 @@ case class Series(
     // seriesId: Option[String],
     seriesName: Option[String],
     siteRating: Option[Double],
-    siteRatingCount: Option[Int] //,
+    siteRatingCount: Option[Int],
     // slug: Option[String],
-    // status: Option[String],
+    status: Option[String]
     // zap2itId: Option[String]
 )
 

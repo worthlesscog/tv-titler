@@ -213,6 +213,7 @@ class Tvdb extends TvDatabase {
             rating = s.siteRating,
             runtime = s.runtime map { _.toInt },
             seasons = Some(buildTvSeasons(s, episodes, actors, images)),
+            status = s.status,
             votes = s.siteRatingCount
         ) |> asRight
 
