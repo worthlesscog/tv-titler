@@ -10,7 +10,10 @@ object TextUtils {
         removeGuestStars |>
         removeNamedStars |>
         removeVoiceOf |>
-        compressMultiDashes |>
+        // compressMultiDashes |>
+        convertEmdashes |>
+        convertEndashes |>
+        compressEmdashes |>
         compressMultiQuotes |>
         compressMultiSpaces |>
         unfloatCommas |>
@@ -18,9 +21,18 @@ object TextUtils {
         unfloatSemiColons |>
         trim
 
-    def compressMultiDashes(s: String) = s.replaceAll("-{2,}", "-")
+    // def compressMultiDashes(s: String) = s.replaceAll("-{2,}", "-")
+    def compressEmdashes(s: String) = s.replaceAll(" *— *", "—")
     def compressMultiSpaces(s: String) = s.replaceAll(" {2,}", " ")
     def compressMultiQuotes(s: String) = s.replaceAll(""""{2,}""", """"""")
+
+    // emdash   —
+    // en dash  –
+    // hyphen   -
+    // XXX - guessing 2 or 3 hyphens was supposed to be an em dash
+    def convertEmdashes(s: String) = s.replaceAll("-{2,3}", "—")
+    // XXX - guessing spaced hyphen/en dash was supposed to be an em dash
+    def convertEndashes(s: String) = s.replaceAll(" [-–] ", "—")
 
     // XXX - supplementary characters
     def removeControlCharacters(s: String) = s filterNot { _ isControl }
