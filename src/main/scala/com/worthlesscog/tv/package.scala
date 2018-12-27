@@ -41,6 +41,16 @@ package object tv {
         def write(s: Option[String]) = ???
     }
 
+    // XXX - This works but is problematic - season counts don't necessarily include specials but lists do
+    //    implicit def optionSeqFormat[T: JsonFormat] = new RootJsonFormat[Option[Seq[T]]] {
+    //        def read(value: JsValue): Option[Seq[T]] = value match {
+    //            case JsArray(elements) if elements.nonEmpty => Some(elements map { _.convertTo[T] })
+    //            case _                                      => None
+    //        }
+    //
+    //        def write(list: Option[Seq[T]]) = ???
+    //    }
+
     lazy val home = Paths.get(System.getProperty("user.home"))
     lazy val log = Logger("Titler")
 
