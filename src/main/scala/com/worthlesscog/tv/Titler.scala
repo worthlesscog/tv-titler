@@ -153,7 +153,7 @@ object Titler {
             case unknown :: _ =>
                 s"$unknown ??\n" |> asLeft
         }
-    
+
     private def maybeSet(f: TvDatabase => Unit, d: String) =
         databases.get(d).fold[Maybe[Unit]](s"Unknown TV database $d\n" |> asLeft) { f(_) |> asRight }
 
