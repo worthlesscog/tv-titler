@@ -18,7 +18,10 @@ class Omdb extends TvDatabase {
     def authenticate(c: Credentials) =
         OmdbToken(c.token or "") |> asRight
 
-    def search(name: String)(implicit t: Token, lang: String) =
+    def search(name: String, t: Token, lang: String) =
+        searchWithImplicits(name)(t)
+
+    private def searchWithImplicits(name: String)(implicit t: Token) =
         for {
             results <- pages(searchResult, continue)(API, auth ++ Seq(("s", name), ("type", "series"), ("r", "json")))
             searchResults <- convertResults(results)
@@ -40,7 +43,10 @@ class Omdb extends TvDatabase {
                 r => ApiSearchResult(databaseId, r.imdbID.get, r.Title.get, r.Year, None, None)
             } |> asRight
 
-    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
+    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]], token: Token, lang: String) =
+        getTvSeriesWithImplicits(identifier, seasonNumbers)(token)
+
+    private def getTvSeriesWithImplicits(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token) =
         ???
 
 }

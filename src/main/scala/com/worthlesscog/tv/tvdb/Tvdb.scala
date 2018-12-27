@@ -57,7 +57,10 @@ class Tvdb extends TvDatabase {
     private def authenticationPass(v: JsValue) =
         v.convertTo[Authz].token |> TvdbToken |> asRight
 
-    def search(name: String)(implicit t: Token, lang: String) =
+    def search(name: String, t: Token, lang: String) =
+        searchWithImplicits(name)(t, lang)
+
+    private def searchWithImplicits(name: String)(implicit t: Token, lang: String) =
         for {
             search <- maybe(convertSeriesSearch)(SEARCH, Seq(("name", name)), auth)
             results <- extractSearchResults(search)
@@ -83,7 +86,10 @@ class Tvdb extends TvDatabase {
                 Nil |> asRight
         }
 
-    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
+    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]], token: Token, lang: String) =
+        getTvSeriesWithImplicits(identifier, seasonNumbers)(token, lang)
+
+    private def getTvSeriesWithImplicits(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
         asInt(identifier) fold(_ => searchBySlug(identifier), asRight) match {
             case Left(error) =>
                 error |> asLeft

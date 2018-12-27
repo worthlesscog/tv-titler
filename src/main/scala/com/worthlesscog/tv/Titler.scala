@@ -66,8 +66,6 @@ object Titler {
 
     // val args1 = Array("-target", "E:\\tv", "-merge", "tmdb", "54671", "tvdb", "penny-dreadful")
 
-    // XXX - write json doodads to convert empty seq/list into None
-
     def main(args: Array[String]): Unit = {
         val status = for {
             _ <- parseArgs(args toList)
@@ -216,7 +214,7 @@ object Titler {
     private def download(d: TvDatabase, auth: Map[String, String], id: String, seasons: Option[Set[Int]], lang: String) = Future {
         for {
             token <- authenticate(d, auth)
-            series <- d.getTvSeries(id, seasons)(token, lang)
+            series <- d.getTvSeries(id, seasons, token, lang)
         } yield series
     }
 
@@ -234,7 +232,7 @@ object Titler {
     private def search(d: TvDatabase, search: String, auth: Map[String, String], lang: String) = Future {
         for {
             token <- authenticate(d, auth)
-            results <- d.search(search)(token, lang)
+            results <- d.search(search, token, lang)
         } yield results
     }
 

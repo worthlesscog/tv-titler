@@ -20,7 +20,7 @@ class Maze extends TvDatabase {
     def authenticate(c: Credentials) =
         MazeToken() |> asRight
 
-    def search(name: String)(implicit t: Token, lang: String) =
+    def search(name: String, t: Token, lang: String) =
         for {
             results <- maybe(seqResult)(TV_SEARCH, Seq(("q", name)))
             searchResults <- convertResults(results)
@@ -37,7 +37,7 @@ class Maze extends TvDatabase {
                 r => ApiSearchResult(databaseId, r.id.get, r.name.get, r.premiered, r.language, r.genres)
             } |> asRight
 
-    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit t: Token, lang: String) =
+    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]], t: Token, lang: String) =
         ???
 
 }

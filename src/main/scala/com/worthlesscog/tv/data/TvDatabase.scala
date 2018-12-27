@@ -10,8 +10,8 @@ trait TvDatabase {
 
     def authenticate(credentials: Credentials): Maybe[Token]
 
-    def search(name: String)(implicit token: Token, lang: String): Maybe[Seq[SearchResult[_]]]
+    def search(name: String, token: Token, lang: String): Maybe[Seq[SearchResult[_]]]
 
-    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String): Maybe[TvSeries]
+    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]], token: Token, lang: String): Maybe[TvSeries]
 
 }

@@ -30,7 +30,10 @@ class Tmdb extends TvDatabase {
     def authenticate(c: Credentials) =
         TmdbToken(c.token or "") |> asRight
 
-    def search(name: String)(implicit t: Token, lang: String) =
+    def search(name: String, t: Token, lang: String) =
+        searchWithImplicits(name)(t, lang)
+
+    private def searchWithImplicits(name: String)(implicit t: Token, lang: String) =
         for {
             // XXX - tmdb contains some miscategorized shows, use both sets of genres
             movieGenres <- maybe(extractGenres)(GENRES, auth)
@@ -62,7 +65,10 @@ class Tmdb extends TvDatabase {
                 r => ApiSearchResult(databaseId, r.id.get, r.name.get, r.first_air_date, r.original_language, r.genre_ids map { _ map genres })
             } |> asRight
 
-    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
+    def getTvSeries(identifier: String, seasonNumbers: Option[Set[Int]], token: Token, lang: String) =
+        getTvSeriesWithImplicits(identifier, seasonNumbers)(token, lang)
+
+    private def getTvSeriesWithImplicits(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token, lang: String) =
         for {
             showId <- asInt(identifier)
             config <- maybe(extractConfiguration)(CONFIGURATION, auth)
