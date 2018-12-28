@@ -6,6 +6,8 @@ import com.worthlesscog.tv.tmdb.Protocols._
 import com.worthlesscog.tv.TextUtils.allTidy
 import spray.json.JsValue
 
+// XXX - this needs moving to appended/embedded results
+
 class Tmdb extends TvDatabase {
 
     this: HttpOps =>
