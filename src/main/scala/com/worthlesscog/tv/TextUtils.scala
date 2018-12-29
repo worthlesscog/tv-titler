@@ -5,15 +5,28 @@ import org.apache.commons.text.StringEscapeUtils
 object TextUtils {
 
     def allTidy(s: String) = s |>
-        unescapeXml |>
-        removeControlCharacters |>
-        removeGuestStars |>
-        removeNamedStars |>
-        removeVoiceOf |>
-        // compressMultiDashes |>
+        tidyXml |>
+        removeActors |>
+        tidyDashes |>
+        tidyText
+
+    def removeActors(s: String) = s |>
+        actorCameo |>
+        actorGuest |>
+        actorNamed |>
+        actorVoice
+
+    def tidyDashes(s: String) = s |>
         convertEmdashes |>
         convertEndashes |>
-        compressEmdashes |>
+        compressEmdashes
+
+    def tidyHtml(s: String) = s |>
+        htmlItalics |>
+        htmlTags
+
+    def tidyText(s: String) = s |>
+        removeControlCharacters |>
         compressMultiQuotes |>
         compressMultiSpaces |>
         unfloatCommas |>
@@ -21,7 +34,14 @@ object TextUtils {
         unfloatSemiColons |>
         trim
 
-    // def compressMultiDashes(s: String) = s.replaceAll("-{2,}", "-")
+    def tidyXml(s: String) = s |>
+        xmlUnescape
+
+    def actorCameo(s: String) = s.replaceAll("""\(.*?cameo.*?\)""", " ")
+    def actorGuest(s: String) = s.replaceAll("""\(guest +star +.*?\)""", "")
+    def actorNamed(s: String) = s.replaceAll("""\(\p{Upper}\p{Lower}+ +\p{Upper}\p{Lower}+.*?\)""", "")
+    def actorVoice(s: String) = s.replaceAll("""\(voice +of +.*?\)""", "")
+
     def compressEmdashes(s: String) = s.replaceAll(" *— *", "—")
     def compressMultiSpaces(s: String) = s.replaceAll(" {2,}", " ")
     def compressMultiQuotes(s: String) = s.replaceAll(""""{2,}""", """"""")
@@ -34,18 +54,19 @@ object TextUtils {
     // XXX - guessing spaced hyphen/en dash was supposed to be an em dash
     def convertEndashes(s: String) = s.replaceAll(" [-–] ", "—")
 
+    // XXX - arbitrary choice, use italics for quotes, ignore bold etc.
+    def htmlItalics(s: String) = s.replaceAll("""</?i>""",""""""")
+    def htmlTags(s: String) = s.replaceAll("""<.*?>""", " ")
+
     // XXX - supplementary characters
     def removeControlCharacters(s: String) = s filterNot { _ isControl }
-    def removeGuestStars(s: String) = s.replaceAll("""\(guest +star +.*?\)""", "")
-    def removeNamedStars(s: String) = s.replaceAll("""\(\p{Upper}\p{Lower}+ +\p{Upper}\p{Lower}+.*?\)""", "")
-    def removeVoiceOf(s: String) = s.replaceAll("""\(voice +of +.*?\)""", "")
 
     def trim(s: String) = s.trim
-
-    def unescapeXml(s: String) = StringEscapeUtils.unescapeXml(s)
 
     def unfloatCommas(s: String) = s.replaceAll(" ,", ",")
     def unfloatFullStops(s: String) = s.replaceAll(""" \.""", """\.""")
     def unfloatSemiColons(s: String) = s.replaceAll(" ;", ";")
+
+    def xmlUnescape(s: String) = StringEscapeUtils.unescapeXml(s)
 
 }
