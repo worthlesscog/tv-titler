@@ -7,6 +7,7 @@ object TextUtils {
     def allTidy(s: String) = s |>
         tidyXml |>
         removeActors |>
+        substitutions |>
         tidyDashes |>
         tidyText
 
@@ -15,6 +16,10 @@ object TextUtils {
         actorGuest |>
         actorNamed |>
         actorVoice
+
+    def substitutions(s: String) = s |>
+        substituteDoubleQuotes |>
+        substituteEllipses
 
     def tidyDashes(s: String) = s |>
         convertEmdashes |>
@@ -60,6 +65,11 @@ object TextUtils {
 
     // XXX - supplementary characters
     def removeControlCharacters(s: String) = s filterNot { _ isControl }
+
+    // 66 - “
+    // 99 - ”
+    def substituteDoubleQuotes(s: String) = s.replaceAll(""""([^"]*?)"""","""“$1”""")
+    def substituteEllipses(s: String) = s.replaceAll("""\.\.\.""", "…")
 
     def trim(s: String) = s.trim
 
