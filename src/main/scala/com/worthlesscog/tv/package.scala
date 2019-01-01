@@ -84,6 +84,9 @@ package object tv {
     def jsField(v: JsValue, field: String) =
         v.asJsObject.fields.get(field)
 
+    def first[A, B](t: Traversable[A])(f: A => Option[B]): Option[B] =
+        t collectFirst { Function unlift f }
+
     def leftException(x: Exception) = x.toString + "\n" |> asLeft
 
     def maybeIO[A](f: => Maybe[A]) =
