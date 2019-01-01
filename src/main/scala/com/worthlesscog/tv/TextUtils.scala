@@ -19,7 +19,8 @@ object TextUtils {
 
     def substitutions(s: String) = s |>
         substituteDoubleQuotes |>
-        substituteEllipses
+        substituteEllipses |>
+        substituteLinefeeds
 
     def tidyDashes(s: String) = s |>
         convertEmdashes |>
@@ -66,10 +67,10 @@ object TextUtils {
     // XXX - supplementary characters
     def removeControlCharacters(s: String) = s filterNot { _ isControl }
 
-    // 66 - “
-    // 99 - ”
+    // “ 66 and 99 ”
     def substituteDoubleQuotes(s: String) = s.replaceAll(""""([^"]*?)"""","""“$1”""")
     def substituteEllipses(s: String) = s.replaceAll("""\.\.\.""", "…")
+    def substituteLinefeeds(s: String) = s.replace('\n', ' ')
 
     def trim(s: String) = s.trim
 
