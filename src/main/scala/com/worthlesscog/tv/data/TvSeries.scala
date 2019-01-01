@@ -24,6 +24,7 @@ trait PosterUrl {
 
 trait Rating {
     def rating: Option[Double]
+    def votes: Option[Int]
 }
 
 case class TvSeries(
