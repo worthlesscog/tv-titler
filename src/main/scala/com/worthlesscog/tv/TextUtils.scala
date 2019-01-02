@@ -44,7 +44,7 @@ object TextUtils {
         xmlUnescape
 
     def actorCameo(s: String) = s.replaceAll("""\(.*?cameo.*?\)""", " ")
-    def actorGuest(s: String) = s.replaceAll("""\(guest +star +.*?\)""", "")
+    def actorGuest(s: String) = s.replaceAll("""\(guest +star.*?\)""", "")
     def actorNamed(s: String) = s.replaceAll("""\(\p{Upper}\p{Lower}+ +\p{Upper}\p{Lower}+.*?\)""", "")
     def actorVoice(s: String) = s.replaceAll("""\(voice +of +.*?\)""", "")
 
@@ -69,7 +69,7 @@ object TextUtils {
 
     // “ 66 and 99 ”
     def substituteDoubleQuotes(s: String) = s.replaceAll(""""([^"]*?)"""","""“$1”""")
-    def substituteEllipses(s: String) = s.replaceAll("""\.\.\.""", "…")
+    def substituteEllipses(s: String) = s.replaceAll("""\.{2,}""", "…")
     def substituteLinefeeds(s: String) = s.replace('\n', ' ')
 
     def trim(s: String) = s.trim
