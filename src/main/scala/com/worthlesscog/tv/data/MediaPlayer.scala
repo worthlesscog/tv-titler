@@ -10,9 +10,7 @@ trait MediaPlayer {
 
     def playerName: String
 
-    def generate(series: TvSeries, target: File): Maybe[String]
-
-    def merge(series: TvSeries, series2: TvSeries, target: File): Maybe[String]
+    def merge(series: Seq[TvSeries], target: File): Maybe[String]
 
     def resize(target: File): Maybe[String]
 

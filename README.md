@@ -5,49 +5,58 @@ Generates tree style TV directories for Mede8er boxes.
 Requires a config file called ".titler.cfg" in home containing your API keys for TMDB and TVDB; looks like this -
 
 ```
-tmdb: your-api-key
-tvdb: your-api-key
+maze: your-maze-api-key
+omdb: your-omdb-api-key
+tmdb: your-tmdb-api-key
+tvdb: your-tvdb-api-key
 ```
-
 ### Command line
-
 ```
-id                          tv series id to download, database specific, tvdb slug is allowed
--db db                      set database, either tmdb or tvdb, defaults to tmdb
+-<db> key                   specify id to download for db, tvdb slug is allowed
 -lang de                    set language, defaults to en
--merge db1 key1 db2 key2    download and merge, db1 as primary
 -player mede8er             set output style, only mede8er supported
 -resize "directory"         resize artwork appropriately
--search term                search database
--searchall term             search all databases, merge results by name/air date 
+-search term                search databases, merge results by name/air date 
 -seasons 1,4,5              specify seasons to download
 -target /tv                 target directory, defaults to cwd
 ```
-
 ### Examples
-
 ```
 titler -search Penny
-titler 54671 -target /tv -seasons 2-3
-titler -merge tvdb 1234 tmdb 2345 -season 4 -target /tv -lang fr
-titler -db tvdb penny-dreadful
-titler -searchall Battlestar
+titler -tmdb 54671 -target /tv -seasons 2-3 -lang fr
+titler -tvdb penny-dreadful -season 1
+titler -search Battlestar
+titler -tmdb 501 -maze 1059 -tvdb 71173
 ```
-
 ### Search output 
-
 ```
-                                         Genre   Lang   Aired        tmdb    tvdb     Name
-                                                        2007-03-01           207131   BSGCast
-                        Drama, Science Fiction   en     1978-09-17   501     71173    Battlestar Galactica
-                     Action & Adventure, Drama   en     2003-12-08   71365            Battlestar Galactica
-   Action & Adventure, Drama, Sci-Fi & Fantasy   en     2004-10-18   1972             Battlestar Galactica
-                                                        2003-12-08           73545    Battlestar Galactica (2003)
-                              Sci-Fi & Fantasy   en     2012-11-09   33240   204781   Battlestar Galactica: Blood & Chrome
-                       Drama, Sci-Fi & Fantasy   en     2007-10-05   61910            Battlestar Galactica: Razor Flashbacks
-                        Science Fiction, Drama   en     2008-12-12   8546             Battlestar Galactica: The Face of the Enemy
-      Science Fiction, Drama, Sci-Fi & Fantasy   en     2006-09-05   4882             Battlestar Galactica: The Resistance
-                                                 en     1981-10-26   12090            Battlestars
-                              Sci-Fi & Fantasy   en     1980-01-27   4621    71170    Galactica 1980
+Searching TV Maze, The Open Movie Database, The Movie Database, The TVDB ...
+                                         Genre   Lang      Aired        maze    omdb        tmdb    tvdb     Name
+            Action, Adventure, Science-Fiction   English   1978-09-17   1059                501     71173    Battlestar Galactica
+                                                           1978–1979            tt0076984                    Battlestar Galactica
+                                                           2003                 tt0314979                    Battlestar Galactica
+                     Action & Adventure, Drama   en        2003-12-08                       71365            Battlestar Galactica
+   Action & Adventure, Drama, Sci-Fi & Fantasy   en        2004-10-18                       1972             Battlestar Galactica
+                                                           2004–2009            tt0407362                    Battlestar Galactica
+                   Drama, Science-Fiction, War   English   2005-01-14   166                                  Battlestar Galactica
+                                                           2003-12-08                               73545    Battlestar Galactica (2003)
+                Drama, Action, Science-Fiction   English   2012-11-09   870                 33240   204781   Battlestar Galactica: Blood & Chrome
+                       Drama, Sci-Fi & Fantasy   English   2007-10-05   26696               61910            Battlestar Galactica: Razor Flashbacks
+                                                           2007–                tt1334430                    Battlestar Galactica: Razor Flashbacks
+                        Drama, Science-Fiction   English   2008-12-12   26697               8546             Battlestar Galactica: The Face of the Enemy
+                                                           2008–                tt1338724                    Battlestar Galactica: The Face of the Enemy
+      Science Fiction, Drama, Sci-Fi & Fantasy   English   2006-09-05   26692               4882             Battlestar Galactica: The Resistance
+                                                           2006–                tt0840800                    Battlestar Galactica: The Resistance
+                                                 en        1981-10-26                       12090            Battlestars
+                                                           2007-03-01                               207131   BSGCast
+                              Sci-Fi & Fantasy   en        1980-01-27                       4621    71170    Galactica 1980
+Done
+```
+### Reference
+```
+OMDb API        https://www.omdbapi.com/
+TMDb API v3     https://developers.themoviedb.org/3
+TVDB API v2     https://api.thetvdb.com/swagger
+TVmaze API      https://www.tvmaze.com/api
 ```
 sbt assembly to build an executable JAR.

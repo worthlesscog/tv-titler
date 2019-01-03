@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 import java.io._
 import java.nio.charset.{Charset, StandardCharsets}
 
-import com.worthlesscog.tv.{asLeft, asRight, info, maybeIO, using, HttpOps, Maybe, Or, Pipe}
+import com.worthlesscog.tv.{asLeft, asRight, first, info, maybeIO, using, HttpOps, Maybe, Or, Pipe}
 import com.worthlesscog.tv.data._
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
 
@@ -49,26 +49,31 @@ class Mede8er extends MediaPlayer {
     def playerName = "Mede8er"
 
     // XXX - allow distortion of posters? they're very small, it's probably better that they fill the space
-    def generate(s: TvSeries, dir: File): Maybe[String] =
-        generate(s, TvSeries(), dir)
-
-    private def generate(s1: TvSeries, s2: TvSeries, dir: File): Maybe[String] = {
-        val name = s1.name or s2.name
-        if (s1.seasons exists { _ exists { _.number contains 1 } })
+    def merge(series: Seq[TvSeries], dir: File): Maybe[String] = {
+        val name = firstName(series)
+        val seasons = series flatMap (_ seasons)
+        val seasonNumbers = numbers(seasons)
+        if (seasonNumbers contains 1)
             for {
                 d <- createRoot(dir, name)
                 _ <- viewXml("Movie") |> createXmlFile(d, "View")
-                _ <- downloadImage(d, ABOUT, s1.backdropUrl or s2.backdropUrl, ABOUT_DIMENSIONS)
-                _ <- downloadImage(d, FOLDER, s1.posterUrl or s2.posterUrl, MOVIE_DIMENSIONS)
-                _ <- createSeriesXml(s1, s2) |> createXmlFile(d, name get)
-                status <- createSeasons(d, s1, s2, s1.seasons)
+                _ <- downloadImage(d, ABOUT, firstBackdropUrl(series), ABOUT_DIMENSIONS)
+                _ <- downloadImage(d, FOLDER, firstPosterUrl(series), MOVIE_DIMENSIONS)
+                _ <- createSeriesXml(series) |> createXmlFile(d, name get)
+                status <- createSeasons(d, series, seasons, seasonNumbers)
             } yield status
         else
             for {
                 d <- createRoot(dir, name)
-                status <- createSeasons(d, s1, s2, s1.seasons)
+                status <- createSeasons(d, series, seasons, seasonNumbers)
             } yield status
     }
+
+    private def firstName[T <: Name](s: Seq[T]) =
+        first(s) { _ name }
+
+    def numbers[T <: Number](s: Seq[Seq[T]]) =
+        s.flatten.flatMap(_ number).distinct.sorted
 
     private def createRoot(dir: File, name: Option[String]) =
         name.fold[Maybe[File]] { "Series name can not be empty\n" |> asLeft } { createDir(dir) }
@@ -94,7 +99,6 @@ class Mede8er extends MediaPlayer {
 
     private def createXmlFile(dir: File, name: String)(e: Elem) = {
         def formatAndCreate(f: File) = {
-            // info(s"Creating $f\n")
             using(f |> fos |> osw(StandardCharsets.UTF_8)) {
                 val fmt = new PrettyPrinter(2048, 2).format(e) |> XML.loadString
                 XML.write(_, fmt, "UTF-8", true, null)
@@ -108,14 +112,13 @@ class Mede8er extends MediaPlayer {
         maybeIO { formatAndCreate(f) }
     }
 
-    def fos(file: File) =
+    private def fos(file: File) =
         new FileOutputStream(file)
 
     private def downloadImage(dir: File, stub: String, url: Option[String], dim: Dimension) =
         url match {
             case Some(u) =>
                 val f = new File(dir, stub + ".jpg")
-                // info(s"Creating $f\n")
                 for {
                     i <- readImage(u)
                     r <- resizeImage(i, dim, 2)
@@ -189,21 +192,27 @@ class Mede8er extends MediaPlayer {
             "No jpg writer available\n" |> asLeft
     }
 
+    private def firstBackdropUrl(s: Seq[TvSeries]) =
+        first(s) { _ backdropUrl }
+
+    private def firstPosterUrl[T <: PosterUrl](s: Seq[T]) =
+        first(s) { _ posterUrl }
+
     // XXX - for missing fields, examine supplied data to provide? i.e. number of seasons
-    private def createSeriesXml(s1: TvSeries, s2: TvSeries) =
+    private def createSeriesXml(series: Seq[TvSeries]) =
         titleXml(
             cast = Seq(
-                s1.language or s2.language or UNKNOWN,
-                (s1.numberOfSeasons or s2.numberOfSeasons).fold { "?" } { _ + " season(s)" },
-                s1.status or s2.status or UNKNOWN
+                firstLanguage(series) or UNKNOWN,
+                firstNumberOfSeasons(series).fold { "?" } { _ + " season(s)" },
+                firstStatus(series) or UNKNOWN
             ), // XXX - Abuse cast list
-            date = s1.airDate or s2.airDate or "",
+            date = firstAirDate(series) or "",
             director = "",
-            genres = s1.genres or s2.genres or Nil,
-            plot = s1.overview or s2.overview or "",
-            rating = 10 * (s1.rating or s2.rating or 0.0) toInt,
-            runtime = (s1.runtime or s2.runtime).fold { UNKNOWN } { _.toString },
-            title = s1.name or s2.name get,
+            genres = firstGenres(series) or Nil,
+            plot = firstOverview(series) or "",
+            rating = averageRating(series),
+            runtime = firstRuntime(series).fold { UNKNOWN } { _.toString },
+            title = firstName(series) get,
             year = "")
 
     private def titleXml(title: String, year: String, rating: Int, plot: String, date: String, runtime: String, genres: Seq[String], director: String, cast: Seq[String]) =
@@ -229,11 +238,44 @@ class Mede8er extends MediaPlayer {
     private def actor(s: String) =
         <actor>{s}</actor>
 
+    private def firstLanguage(s: Seq[TvSeries]) =
+        first(s) { _ language }
+
+    private def firstNumberOfSeasons(s: Seq[TvSeries]) =
+        first(s) { _ numberOfSeasons }
+
+    private def firstStatus(s: Seq[TvSeries]) =
+        first(s) { _ status }
+
+    private def firstAirDate[T <: AirDate](s: Seq[T]) =
+        first(s) { _ airDate }
+
+    private def firstGenres(s: Seq[TvSeries]) =
+        first(s) { _ genres }
+
+    private def firstOverview[T <: Overview](s: Seq[T]) =
+        first(s) { _ overview }
+
+    def averageRating[T <: Rating](s: Seq[T]) =
+        s.foldLeft(0.0, 0) {
+            case ((total, votes), t) => (t.rating, t.votes) match {
+                case (Some(r), Some(v)) => (total + r * v, votes + v)
+                case (Some(r), None)    => (total + r, votes + 1)
+                case _                  => (total, votes)
+            }
+        } match {
+            case (_, 0) => 0
+            case (r, v) => 10 * (r / v) toInt
+        }
+
+    private def firstRuntime(s: Seq[TvSeries]) =
+        first(s) { _ runtime }
+
     // private def isPrintable(c: Char) =
     //     !Character.isISOControl(c) && Option(Character.UnicodeBlock.of(c)).fold(false)(_ ne Character.UnicodeBlock.SPECIALS)
 
-    private def createSeasons(dir: File, s1: TvSeries, s2: TvSeries, seasons: Option[Seq[TvSeason]]) =
-        seasons.fold[Maybe[String]] { DONE |> asRight } { forAll(_, createSeason(dir, s1, s2)) }
+    private def createSeasons(dir: File, series: Seq[TvSeries], seasons: Seq[Seq[TvSeason]], numbers: Seq[Int]) =
+        forAll(numbers, createSeason(dir, series, seasons))
 
     private def forAll[T, U](things: Seq[T], f: T => Maybe[U]): Maybe[String] =
         if (things isEmpty)
@@ -243,85 +285,88 @@ class Mede8er extends MediaPlayer {
             case _           => forAll(things tail, f)
         }
 
-    private def createSeason(dir: File, s1: TvSeries, s2: TvSeries)(s: TvSeason) =
-        s.number match {
-            case Some(n) =>
-                val name = f"S$n%02d"
-                val t = s2.seasons.flatMap { _ find { _.number contains n } } or TvSeason()
-                for {
-                    d <- createDir(dir)(name)
-                    _ <- viewXml("Photo") |> createXmlFile(d, "View")
-                    _ <- downloadImage(d, FOLDER, s.posterUrl or t.posterUrl, MOVIE_DIMENSIONS)
-                    _ <- createSeasonXml(s, t, name, s1.runtime or s2.runtime, s1.genres or s2.genres) |> createXmlFile(d, name)
-                    _ <- createEpisodes(d, s1, s2, n, t, s.episodes)
-                } yield d
+    private def createSeason(dir: File, series: Seq[TvSeries], seasons: Seq[Seq[TvSeason]])(n: Int) = {
+        val ss = numbered(seasons, n)
+        val name = f"S$n%02d"
+        for {
+            d <- createDir(dir)(name)
+            _ <- viewXml("Photo") |> createXmlFile(d, "View")
+            _ <- downloadImage(d, FOLDER, firstPosterUrl(ss), MOVIE_DIMENSIONS)
+            episodes = ss flatMap { _ episodes }
+            episodeNumbers = numbers(episodes)
+            _ <- createSeasonXml(series, ss, episodes, name, episodeNumbers) |> createXmlFile(d, name)
+            _ <- createEpisodes(d, series, n, episodes, episodeNumbers)
+        } yield d
+    }
 
-            case _ =>
-                "Season number can't be empty\n" |> asLeft
-        }
+    def numbered[T <: Number](s: Seq[Seq[T]], n: Int) =
+        s flatMap { _ filter { _.number contains n } }
 
-    private def createSeasonXml(s: TvSeason, t: TvSeason, title: String, runtime: Option[Int], genres: Option[Seq[String]]) = {
-        val episodes = s.numberOfEpisodes or t.numberOfEpisodes or s.episodes.fold { 0 } { _.size }
-        val rating = s.episodes.fold { 0.0 } { s => if (s isEmpty) 0.0 else (s flatMap { _.rating } sum) / s.size }
+    private def createSeasonXml(series: Seq[TvSeries], seasons: Seq[TvSeason], episodes: Seq[Seq[TvEpisode]], title: String, numbers: Seq[Int]) = {
+        val numberOfEpisodes = firstNumberOfEpisodes(seasons) or numbers.max
 
         titleXml(
-            cast = Seq(s"$episodes episode(s)"), // XXX - Abuse cast list
-            date = s.airDate or t.airDate or "",
+            cast = Seq(s"$numberOfEpisodes episode(s)"), // XXX - Abuse cast list
+            date = firstAirDate(seasons) or "",
             director = "",
-            genres = genres or Nil,
-            plot = s.overview or t.overview or "",
-            rating = 10 * rating toInt,
-            runtime = runtime.fold { UNKNOWN } { _.toString },
+            genres = firstGenres(series) or Nil,
+            plot = firstOverview(seasons) or "",
+            rating = averageRating(episodes flatten),
+            runtime = firstRuntime(series).fold { UNKNOWN } { _ toString },
             title = title,
             year = "")
     }
 
-    private def createEpisodes(dir: File, s1: TvSeries, s2: TvSeries, season: Int, t: TvSeason, episodes: Option[Seq[TvEpisode]]) =
-        episodes.fold[Maybe[String]] { DONE |> asRight } { forAll(_, createEpisode(dir, s1, s2, season, t)) }
+    private def firstNumberOfEpisodes(s: Seq[TvSeason]) =
+        first(s) { _ numberOfEpisodes }
 
-    private def createEpisode(dir: File, s1: TvSeries, s2: TvSeries, season: Int, t: TvSeason)(e: TvEpisode) =
-        e.number match {
-            case Some(n) =>
-                val f = t.episodes.flatMap { _ find { _.number contains n } } or TvEpisode()
-                val name = e.name or f.name or "Episode " + n
-                val number = f"$n%02d"
-                for {
-                    d <- createDir(dir)(f"$number - $name")
-                    _ <- downloadImage(d, FOLDER, e.screenshotUrl or f.screenshotUrl, PHOTO_DIMENSIONS)
-                    _ <- createTitleXml(e, f, s1.runtime or s2.runtime, s1.genres or s2.genres) |> createXmlFile(d, f"S$season%02dE$number%s")
-                } yield d
+    private def createEpisodes(dir: File, series: Seq[TvSeries], season: Int, episodes: Seq[Seq[TvEpisode]], numbers: Seq[Int]) =
+        forAll(numbers, createEpisode(dir, series, season, episodes))
 
-            case _ =>
-                "Episode number can't be empty\n" |> asLeft
-        }
+    private def createEpisode(dir: File, series: Seq[TvSeries], season: Int, episodes: Seq[Seq[TvEpisode]])(n: Int) = {
+        val es = numbered(episodes, n)
+        val name = firstName(es) or "Episode " + n
+        val number = f"$n%02d"
+        for {
+            d <- createDir(dir)(f"$number - $name")
+            _ <- downloadImage(d, FOLDER, firstScreenshotUrl(es), PHOTO_DIMENSIONS)
+            _ <- createTitleXml(es, firstRuntime(series), firstGenres(series)) |> createXmlFile(d, f"S$season%02dE$number%s")
+        } yield d
+    }
 
-    private def createTitleXml(e: TvEpisode, f: TvEpisode, runtime: Option[Int], genres: Option[Seq[String]]) =
+    private def firstScreenshotUrl(s: Seq[TvEpisode]) =
+        first(s) { _ screenshotUrl }
+
+    private def createTitleXml(episodes: Seq[TvEpisode], runtime: Option[Int], genres: Option[Seq[String]]) =
         titleXml(
-            cast = (e.cast or f.cast).fold[Seq[String]](Nil) { castNames },
-            date = e.airDate or f.airDate or "",
-            director = (e.crew or f.crew).fold { "" } { director },
+            cast = firstCast(episodes).fold[Seq[String]](Nil) { castNames },
+            date = firstAirDate(episodes) or "",
+            director = firstCrew(episodes).fold { "" } { director },
             genres = genres or Nil,
-            plot = e.overview or f.overview or "",
-            rating = (e.rating or f.rating).fold(0) { 10 * _ toInt },
-            runtime = runtime.fold { UNKNOWN } { _.toString },
-            title = e.name or f.name or "",
+            plot = firstOverview(episodes) or "",
+            rating = averageRating(episodes),
+            runtime = runtime.fold { UNKNOWN } { _ toString },
+            title = firstName(episodes) or "",
             year = "")
 
+    private def firstCast(s: Seq[TvEpisode]) =
+        first(s) { _ cast }
+
     private def castNames(cast: Seq[Role]) =
-        cast flatMap { _.name } distinct
+        cast flatMap { _ name } distinct
+
+    private def firstCrew(s: Seq[TvEpisode]) =
+        first(s) { _ crew }
 
     private def director(crew: Seq[Role]) =
-        crew find { _.role contains "Director" } flatMap { _.name } or ""
-
-    def merge(series: TvSeries, series2: TvSeries, target: File): Maybe[String] =
-        generate(series, series2, target)
+        crew find { _.role contains "Director" } flatMap { _ name } or ""
 
     def resize(target: File): Maybe[String] =
         if (new File(target, target.getName + ".xml") exists)
             for {
                 _ <- verifyImage(new File(target, ABOUT_JPG), ABOUT_DIMENSIONS)
                 _ <- verifyImage(new File(target, FOLDER_JPG), MOVIE_DIMENSIONS)
-                s <- forAll(target.listFiles filter { _.isDirectory }, resizeSeason)
+                s <- forAll(target.listFiles filter { _ isDirectory }, resizeSeason)
             } yield s
         else
             target + " doesn't look like a TV series root\n" |> asLeft
@@ -335,7 +380,7 @@ class Mede8er extends MediaPlayer {
                 if (i.getWidth > dim.width || i.getHeight > dim.height)
                     for {
                         newI <- resizeImage(i, dim)
-                        temp <- maybeIO { createTempFile(f.getParentFile) }
+                        temp <- maybeIO { createTempFile(f getParentFile) }
                         _ <- saveJpg(temp, newI)
                         _ <- maybeIO { deleteFile(f) }
                         s <- maybeIO { rename(temp, f) }
@@ -366,7 +411,7 @@ class Mede8er extends MediaPlayer {
         if (target.getName matches """^S\d\d$""")
             for {
                 _ <- verifyImage(new File(target, FOLDER_JPG), MOVIE_DIMENSIONS)
-                s <- forAll(target.listFiles filter { _.isDirectory }, resizeEpisode)
+                s <- forAll(target.listFiles filter { _ isDirectory }, resizeEpisode)
             } yield s
         else
             DONE |> asRight
