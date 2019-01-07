@@ -34,6 +34,7 @@ package object tv {
     // XXX - this is probably slooow
     implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
         def read(v: JsValue): Option[String] = v match {
+            case JsString("N/A")                => None // XXX Omdb
             case JsString(s) if s.trim.nonEmpty => Some(s trim)
             case _                              => None
         }
