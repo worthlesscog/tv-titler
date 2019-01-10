@@ -1,7 +1,7 @@
 package com.worthlesscog.tv.omdb
 
-import com.worthlesscog.tv.{asRight, jsStringToInt, HttpOps, Or, Pipe}
-import com.worthlesscog.tv.data.{Credentials, Token, TvDatabase, SearchResult => ApiSearchResult}
+import com.worthlesscog.tv.{asLeft, asRight, jsStringToInt, HttpOps, Maybe, Or, Pairs, Pipe}
+import com.worthlesscog.tv.data.{Credentials, Role, Token, TvDatabase, TvEpisode, TvSeason, TvSeries, SearchResult => ApiSearchResult}
 import com.worthlesscog.tv.omdb.Protocols._
 import spray.json.JsValue
 
@@ -47,6 +47,92 @@ class Omdb extends TvDatabase {
         getTvSeriesWithImplicits(identifier, seasonNumbers)(token)
 
     private def getTvSeriesWithImplicits(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token) =
-        ???
+        for {
+            title <- maybe(extractTitle)(API, auth :+ id(identifier))
+            requiredSeasons = seasonNumbers.getOrElse(1 to 99 toSet).toSeq.sorted
+            availableSeasons = title.totalSeasons.getOrElse("0").toInt
+            // XXX - no sign of specials, usually masquerading as season 0
+            sNos = requiredSeasons filter { n => n > 0 && n <= availableSeasons } map { _ toString }
+            seasons <- download(extractSeason, auth :+ id(identifier), "Season", sNos)
+            eNos = seasons flatMap { _.Episodes flatMap { _ imdbID } }
+            episodes <- download(extractEpisode, auth, "i", eNos)
+            series <- buildTvSeries(title, seasons, episodes)
+        } yield series
+
+    private def extractTitle(v: JsValue) =
+        v.convertTo[Title] |> asRight
+
+    private def id(identifier: String) =
+        ("i", identifier)
+
+    // XXX - tvdb does this pretty much
+    private def download[T](f: JsValue => Maybe[T], parameters: Pairs, label: String, things: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
+        if (things isEmpty)
+            tees |> asRight
+        else maybe(f)(API, parameters :+ (label, things.head)) match {
+            case Left(error) => error |> asLeft
+            case Right(t)    => download(f, parameters, label, things.tail, tees :+ t)
+        }
+
+    private def extractSeason(v: JsValue) =
+        v.convertTo[Season] |> asRight
+
+    private def extractEpisode(v: JsValue) =
+        v.convertTo[Episode] |> asRight
+
+    private def buildTvSeries(t: Title, seasons: Seq[Season], episodes: Seq[Episode]) = {
+        println(t)
+        TvSeries(
+            airDate = t Released, // XXX - format?
+            backdropUrl = None,
+            genres = t.Genre map splitCommaDelimited,
+            language = t Language,
+            name = t Title,
+            numberOfSeasons = t.totalSeasons map { _ toInt },
+            overview = t Plot,
+            posterUrl = None,
+            rating = t.imdbRating map { _ toDouble },
+            runtime = None, // XXX - work out what's contained
+            seasons = Some(buildTvSeasons(t, seasons, episodes)),
+            status = None,
+            votes = t.imdbVotes map unspecifiedInt
+        ) |> asRight
+    }
+
+    private def splitCommaDelimited(s: String) =
+        s split "," map { _ trim }
+
+    private def unspecifiedInt(s: String) =
+        s.filter(_ isDigit).mkString toInt
+
+    private def buildTvSeasons(s: Title, seasons: Seq[Season], episodes: Seq[Episode]) =
+        seasons.flatMap(_.Season).sorted map { n => buildTvSeason(s, n, episodes filter { _.Season contains n }) }
+
+    private def buildTvSeason(s: Title, number: String, episodes: Seq[Episode]) = {
+        println(number)
+        TvSeason(
+            airDate = None,
+            episodes = Some(episodes sortBy { _.Episode } map buildTvEpisode(s)),
+            number = Some(number toInt),
+            numberOfEpisodes = Some(episodes size),
+            overview = None,
+            posterUrl = None
+        )
+    }
+
+    private def buildTvEpisode(s: Title)(e: Episode) = {
+        println(e)
+        TvEpisode(
+            airDate = e.Released,
+            cast = e.Actors map { splitCommaDelimited(_) map { n => Role(Some(n), None) } },
+            crew = None, // XXX - we *might* have the Director
+            name = e.Title,
+            number = e.Episode map { _ toInt },
+            overview = e.Plot, // XXX - sanitize
+            screenshotUrl = None,
+            rating = e.imdbRating map { _ toDouble },
+            votes = e.imdbVotes map unspecifiedInt
+        )
+    }
 
 }
