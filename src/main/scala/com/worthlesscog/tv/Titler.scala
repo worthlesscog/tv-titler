@@ -51,18 +51,8 @@ object Titler {
     var search = ""
     var seasons: Option[Set[Int]] = None
 
-    // val args1 = Array("-search", "Battlestar")
-    // val args1 = Array("-search", "Penny")
-    // val args1 = Array("-search", "Mirror")
-
-    // val args2 = Array("-target", "E:\\tv", "-tmdb", "54671")
-    // val args3 = Array("-target", "E:\\tv", "-tmdb", "54671", "-seasons", "3-")
-
-    // val args2 = Array("-target", "E:\\tv", "-tvdb", "265766")
-    // val args3 = Array("-target", "E:\\tv", "-tvdb", "265766", "-seasons", "2-")
-    // val args4 = Array("-target", "E:\\tv", "-tvdb", "penny-dreadful")
-
-    // val args1 = Array("-target", "E:\\tv", "-maze", "16", "-tmdb", "54671", "-tvdb", "penny-dreadful")
+    // val args1 = Array("-search", "Books")
+    // val args1 = Array("-target", "E:\\tv", "-maze", "16", "-tmdb", "54671", "-tvdb", "penny-dreadful", "-omdb", "tt2628232")
 
     def main(args: Array[String]): Unit = {
         val status = for {
