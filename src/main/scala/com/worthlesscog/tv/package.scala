@@ -18,10 +18,6 @@ package object tv {
         }
     }
 
-    object Optionally {
-        def unapply[T](t: T) = if (t == null) Some(None) else Some(Some(t))
-    }
-
     implicit class Or[T](t: Option[T]) {
         def or(t2: Option[T]) = if (t nonEmpty) t else t2
         def or(t2: T) = t getOrElse t2
@@ -40,6 +36,10 @@ package object tv {
         }
 
         def write(s: Option[String]) = ???
+    }
+
+    object Optionally {
+        def unapply[T](t: T) = if (t == null) Some(None) else Some(Some(t))
     }
 
     // XXX - This works but is problematic - season counts don't necessarily include specials but lists do
@@ -68,6 +68,7 @@ package object tv {
     def lr[T](t: T) = t |> asLeft |> asRight
     def rr[T](t: T) = t |> asRight |> asRight
 
+    def debug(s: String) = log.debug(s)
     def info(s: String) = log.info(s)
 
     def jsInt(v: JsValue, field: String, default: Int) =
