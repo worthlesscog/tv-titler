@@ -80,8 +80,7 @@ class Omdb extends TvDatabase {
     private def extractEpisode(v: JsValue) =
         v.convertTo[Episode] |> asRight
 
-    private def buildTvSeries(t: Title, seasons: Seq[Season], episodes: Seq[Episode]) = {
-        println(t)
+    private def buildTvSeries(t: Title, seasons: Seq[Season], episodes: Seq[Episode]) =
         TvSeries(
             airDate = t Released, // XXX - format?
             backdropUrl = None,
@@ -97,7 +96,6 @@ class Omdb extends TvDatabase {
             status = None,
             votes = t.imdbVotes map unspecifiedInt
         ) |> asRight
-    }
 
     private def splitCommaDelimited(s: String) =
         s split "," map { _ trim }
@@ -120,8 +118,7 @@ class Omdb extends TvDatabase {
         )
     }
 
-    private def buildTvEpisode(s: Title)(e: Episode) = {
-        println(e)
+    private def buildTvEpisode(s: Title)(e: Episode) =
         TvEpisode(
             airDate = e.Released,
             cast = e.Actors map { splitCommaDelimited(_) map { n => Role(Some(n), None) } },
@@ -133,6 +130,5 @@ class Omdb extends TvDatabase {
             rating = e.imdbRating map { _ toDouble },
             votes = e.imdbVotes map unspecifiedInt
         )
-    }
 
 }
