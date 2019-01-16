@@ -106,8 +106,7 @@ class Omdb extends TvDatabase {
     private def buildTvSeasons(s: Title, seasons: Seq[Season], episodes: Seq[Episode]) =
         seasons.flatMap(_.Season).sorted map { n => buildTvSeason(s, n, episodes filter { _.Season contains n }) }
 
-    private def buildTvSeason(s: Title, number: String, episodes: Seq[Episode]) = {
-        println(number)
+    private def buildTvSeason(s: Title, number: String, episodes: Seq[Episode]) =
         TvSeason(
             airDate = None,
             episodes = Some(episodes sortBy { _.Episode } map buildTvEpisode(s)),
@@ -116,7 +115,6 @@ class Omdb extends TvDatabase {
             overview = None,
             posterUrl = None
         )
-    }
 
     private def buildTvEpisode(s: Title)(e: Episode) =
         TvEpisode(
