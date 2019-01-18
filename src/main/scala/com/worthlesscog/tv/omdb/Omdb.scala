@@ -116,7 +116,7 @@ class Omdb extends TvDatabase {
             overview = t Plot,
             posterUrl = None,
             rating = t.imdbRating map { _ toDouble },
-            runtime = None, // XXX - work out what's contained
+            runtime = t.Runtime map { _.split(" ").head toInt },
             seasons = Some(buildTvSeasons(t, seasons, episodes)),
             status = None,
             votes = t.imdbVotes map unspecifiedInt
