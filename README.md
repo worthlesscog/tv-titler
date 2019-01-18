@@ -2,10 +2,10 @@
 
 Generates tree style TV directories for Mede8er boxes.
 
-Requires a config file called ".titler.cfg" in home containing your API keys for TMDB and TVDB; looks like this -
+Requires a config file called ".titler.cfg" in home containing your API keys; looks like this -
 
 ```
-maze: your-maze-api-key
+maze: dontcare
 omdb: your-omdb-api-key
 tmdb: your-tmdb-api-key
 tvdb: your-tvdb-api-key
