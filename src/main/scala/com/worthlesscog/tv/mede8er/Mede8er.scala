@@ -171,8 +171,8 @@ class Mede8er extends MediaPlayer {
     // XXX - does this work for .something_else to .jpg?
     private def saveJpg(file: File, i: BufferedImage) = {
         def write(w: ImageWriter) =
-            using(file |> fos |> ImageIO.createImageOutputStream) { s =>
-                w.setOutput(s)
+            using(file |> fos) { s =>
+                s |> ImageIO.createImageOutputStream |> w.setOutput
                 w.write(null, new IIOImage(i, null, null), compressionParams(w, 1.0f))
                 w.dispose()
                 file |> asRight
@@ -397,19 +397,19 @@ class Mede8er extends MediaPlayer {
         ImageIO.read(image) |> asRight
 
     private def createTempFile(target: File) =
-        File.createTempFile("", "", target) |> asRight
+        File.createTempFile("res", "ize", target) |> asRight
 
     private def deleteFile(target: File) =
         if (target delete)
             target |> asRight
         else
-            "Delete failed for $target\n" |> asLeft
+            s"Delete failed for $target\n" |> asLeft
 
     private def rename(source: File, target: File) =
         if (source renameTo target)
             DONE |> asRight
         else
-            "Can't rename $source to $target\n" |> asLeft
+            s"Can't rename $source to $target\n" |> asLeft
 
     private def resizeSeason(target: File) =
         if (target.getName matches """^S\d\d$""")
