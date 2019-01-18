@@ -1,6 +1,6 @@
 package com.worthlesscog.tv.omdb
 
-import com.worthlesscog.tv.{asLeft, asRight, jsStringToInt, HttpOps, Maybe, Or, Pairs, Pipe}
+import com.worthlesscog.tv.{asLeft, asRight, jsField, jsStringToInt, HttpOps, Maybe, Or, Pairs, Pipe}
 import com.worthlesscog.tv.data.{Credentials, Role, Token, TvDatabase, TvEpisode, TvSeason, TvSeries, SearchResult => ApiSearchResult}
 import com.worthlesscog.tv.omdb.Protocols._
 import spray.json.JsValue
@@ -21,11 +21,15 @@ class Omdb extends TvDatabase {
     def search(name: String, t: Token, lang: String) =
         searchWithImplicits(name)(t)
 
+    // XXX - Fix this to cope with failure response
     private def searchWithImplicits(name: String)(implicit t: Token) =
         for {
-            results <- pages(searchResult, continue)(API, auth ++ Seq(("s", name), ("type", "series"), ("r", "json")))
+            results <- pages(searchResult, continue)(API, auth :+ search(name) :+ `type`("series") :+ jsonResults)
             searchResults <- convertResults(results)
         } yield searchResults
+
+    private def searchResult(v: JsValue) =
+        v.convertTo[SearchResult].Search or Nil
 
     private def continue(n: Int, j: JsValue) =
         n != jsStringToInt(j, "totalResults", n)
@@ -33,8 +37,14 @@ class Omdb extends TvDatabase {
     private def auth(implicit t: Token) =
         Seq(("apikey", t.asInstanceOf[OmdbToken].apiKey))
 
-    private def searchResult(v: JsValue) =
-        v.convertTo[SearchResult].Search or Nil
+    private def search(name: String) =
+        ("s", name)
+
+    private def `type`(t: String) =
+        ("type", t)
+
+    private def jsonResults =
+        ("r", "json")
 
     private def convertResults(results: Seq[TitleSynopsis]) =
         results
@@ -48,22 +58,37 @@ class Omdb extends TvDatabase {
 
     private def getTvSeriesWithImplicits(identifier: String, seasonNumbers: Option[Set[Int]])(implicit token: Token) =
         for {
-            title <- maybe(extractTitle)(API, auth :+ id(identifier))
+            title <- maybe(ifSuccessful(extractTitle))(API, auth :+ id(identifier) :+ fullPlot :+ jsonResults)
             requiredSeasons = seasonNumbers.getOrElse(1 to 99 toSet).toSeq.sorted
             availableSeasons = title.totalSeasons.getOrElse("0").toInt
             // XXX - no sign of specials, usually masquerading as season 0
             sNos = requiredSeasons filter { n => n > 0 && n <= availableSeasons } map { _ toString }
-            seasons <- download(extractSeason, auth :+ id(identifier), "Season", sNos)
+            seasons <- download(ifSuccessful(extractSeason), auth :+ id(identifier) :+ jsonResults, "Season", sNos)
             eNos = seasons flatMap { _.Episodes flatMap { _ imdbID } }
-            episodes <- download(extractEpisode, auth, "i", eNos)
+            episodes <- download(ifSuccessful(extractEpisode), auth :+ `type`("episode") :+ fullPlot :+ jsonResults, "i", eNos)
             series <- buildTvSeries(title, seasons, episodes)
         } yield series
 
+    // o.O - {"Response":"False","Error":"Movie not found!"}
+    private def ifSuccessful[T](f: JsValue => T)(v: JsValue): Maybe[T] = {
+        def error = jsField(v, "Error").fold("Unknown Error") { _.toString } |> asLeft
+
+        jsField(v, "Response").fold[Maybe[T]](error) { x =>
+            x.convertTo[String] match {
+                case "True" => f(v) |> asRight
+                case _      => error
+            }
+        }
+    }
+
     private def extractTitle(v: JsValue) =
-        v.convertTo[Title] |> asRight
+        v.convertTo[Title]
 
     private def id(identifier: String) =
         ("i", identifier)
+
+    private def fullPlot =
+        ("plot", "full")
 
     // XXX - tvdb does this pretty much
     private def download[T](f: JsValue => Maybe[T], parameters: Pairs, label: String, things: Seq[String], tees: Seq[T] = Nil): Maybe[Seq[T]] =
@@ -75,10 +100,10 @@ class Omdb extends TvDatabase {
         }
 
     private def extractSeason(v: JsValue) =
-        v.convertTo[Season] |> asRight
+        v.convertTo[Season]
 
     private def extractEpisode(v: JsValue) =
-        v.convertTo[Episode] |> asRight
+        v.convertTo[Episode]
 
     private def buildTvSeries(t: Title, seasons: Seq[Season], episodes: Seq[Episode]) =
         TvSeries(
