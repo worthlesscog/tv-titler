@@ -269,7 +269,7 @@ class Mede8er extends MediaPlayer {
             }
         } match {
             case (_, 0) => 0
-            case (r, v) => 10 * (r / v) toInt
+            case (r, v) => (10 * (r / v) toInt) min 95 // XXX - ratings over 95 don't render properly
         }
 
     private def firstRuntime(s: Seq[TvSeries]) =
