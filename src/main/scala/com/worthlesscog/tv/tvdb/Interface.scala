@@ -50,7 +50,7 @@ case class Series(
     // network: Option[String],
     // networkId: Option[String],
     overview: Option[String],
-    // rating: Option[String],
+    rating: Option[String],
     runtime: Option[String],
     // seriesId: Option[String],
     seriesName: Option[String],

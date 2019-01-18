@@ -19,7 +19,7 @@ object Protocols extends DefaultJsonProtocol {
     implicit val actorFormat = jsonFormat3(Actor)
     implicit val seriesActorsFormat = jsonFormat2(SeriesActors)
 
-    implicit val seriesFormat = jsonFormat9(Series)
+    implicit val seriesFormat = jsonFormat10(Series)
     implicit val seriesDataFormat = jsonFormat2(SeriesData)
 
     implicit val episodesSummaryFormat = jsonFormat1(EpisodesSummary)

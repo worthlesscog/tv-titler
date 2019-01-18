@@ -21,7 +21,7 @@ case class TitleSynopsis(
 case class Title(
     Title: Option[String],
     // Year: Option[String],
-    // Rated: Option[String],
+    Rated: Option[String],
     Released: Option[String],
     Runtime: Option[String],
     Genre: Option[String],
