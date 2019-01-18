@@ -203,7 +203,8 @@ class Mede8er extends MediaPlayer {
         titleXml(
             cast = Seq(
                 firstLanguage(series) or UNKNOWN,
-                firstNumberOfSeasons(series).fold { "?" } { _ + " season(s)" },
+                firstNumberOfSeasons(series).fold { UNKNOWN } { _ + " season(s)" },
+                firstRated(series) or UNKNOWN,
                 firstStatus(series) or UNKNOWN
             ), // XXX - Abuse cast list
             date = firstAirDate(series) or "",
@@ -243,6 +244,9 @@ class Mede8er extends MediaPlayer {
 
     private def firstNumberOfSeasons(s: Seq[TvSeries]) =
         first(s) { _ numberOfSeasons }
+
+    private def firstRated(s: Seq[TvSeries]) =
+        first(s) { _ rated }
 
     private def firstStatus(s: Seq[TvSeries]) =
         first(s) { _ status }

@@ -216,6 +216,7 @@ class Tvdb extends TvDatabase {
             numberOfSeasons = None,
             overview = s.overview map sanitize,
             posterUrl = highestRated(images, POSTER),
+            rated = s.rating,
             rating = s.siteRating,
             runtime = s.runtime map { _.toInt },
             seasons = Some(buildTvSeasons(s, episodes, actors, images)),

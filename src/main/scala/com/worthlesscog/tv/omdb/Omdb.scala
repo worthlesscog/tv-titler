@@ -115,6 +115,7 @@ class Omdb extends TvDatabase {
             numberOfSeasons = t.totalSeasons map { _ toInt },
             overview = t Plot,
             posterUrl = None,
+            rated = t.Rated,
             rating = t.imdbRating map { _ toDouble },
             runtime = t.Runtime map { _.split(" ").head toInt },
             seasons = Some(buildTvSeasons(t, seasons, episodes)),

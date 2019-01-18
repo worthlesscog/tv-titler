@@ -36,6 +36,7 @@ case class TvSeries(
     numberOfSeasons: Option[Int] = None,
     overview: Option[String] = None,
     posterUrl: Option[String] = None,
+    rated: Option[String] = None,
     rating: Option[Double] = None,
     runtime: Option[Int] = None,
     seasons: Option[Seq[TvSeason]] = None,

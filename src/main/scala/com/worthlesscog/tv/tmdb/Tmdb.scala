@@ -132,6 +132,7 @@ class Tmdb extends TvDatabase {
             numberOfSeasons = show.number_of_seasons,
             overview = show.overview map sanitize,
             posterUrl = highestRated(images.posters, 2.0 / 3.0) |> posterUrl,
+            rated = None,
             rating = show.vote_average,
             runtime = show.episode_run_time map { _.min },
             seasons = Some(buildTvSeasons(credits, seasons, show.seasons or Nil, seasonCredits, seasonImages)),

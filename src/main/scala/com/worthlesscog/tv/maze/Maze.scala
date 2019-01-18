@@ -68,6 +68,7 @@ class Maze extends TvDatabase {
             numberOfSeasons = show._embedded map (e => seasonNumbers(e seasons) max),
             overview = show.summary map sanitize,
             posterUrl = original(show image),
+            rated = None,
             rating = show.rating flatMap { _ average },
             runtime = show runtime,
             seasons = Some(buildTvSeasons(show, seasons)),
