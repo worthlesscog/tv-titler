@@ -1,6 +1,7 @@
 package com.worthlesscog.tv.omdb
 
 import com.worthlesscog.tv.{asLeft, asRight, jsField, jsStringToInt, HttpOps, Maybe, Or, Pairs, Pipe}
+import com.worthlesscog.tv.TextUtils.allTidy
 import com.worthlesscog.tv.data.{Credentials, Role, Token, TvDatabase, TvEpisode, TvSeason, TvSeries, SearchResult => ApiSearchResult}
 import com.worthlesscog.tv.omdb.Protocols._
 import spray.json.JsValue
@@ -113,7 +114,7 @@ class Omdb extends TvDatabase {
             language = t Language,
             name = t Title,
             numberOfSeasons = t.totalSeasons map { _ toInt },
-            overview = t Plot,
+            overview = t.Plot map sanitize,
             posterUrl = None,
             rated = t.Rated,
             rating = t.imdbRating map { _ toDouble },
@@ -125,6 +126,9 @@ class Omdb extends TvDatabase {
 
     private def splitCommaDelimited(s: String) =
         s split "," map { _ trim }
+
+    private def sanitize(s: String) =
+        s |> allTidy
 
     private def unspecifiedInt(s: String) =
         s.filter(_ isDigit).mkString toInt
@@ -149,7 +153,7 @@ class Omdb extends TvDatabase {
             crew = None, // XXX - we *might* have the Director
             name = e.Title,
             number = e.Episode map { _ toInt },
-            overview = e.Plot, // XXX - sanitize
+            overview = e.Plot map sanitize,
             screenshotUrl = None,
             rating = e.imdbRating map { _ toDouble },
             votes = e.imdbVotes map unspecifiedInt
