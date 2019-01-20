@@ -32,7 +32,7 @@ trait ScalajHttpOps extends HttpOps {
         t.toString |> fail(url, parameters)
 
     private def fail(url: String, parameters: Pairs)(s: String) =
-        s + " - " + fullUrl(url, parameters) + "\n" |> asLeft
+        s + " - " + fullUrl(url, parameters) |> asLeft
 
     private def fullUrl(url: String, parameters: Pairs) =
         if (parameters isEmpty)
