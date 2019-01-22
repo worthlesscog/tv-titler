@@ -378,10 +378,11 @@ class Mede8er extends MediaPlayer {
     private def verifyImage(f: File, dim: Dimension): Maybe[String] =
         maybeIO { readImage(f) } match {
             case Left(error) =>
-                error |> asLeft
+                f + " - " + error |> asLeft
 
             case Right(i) =>
-                if (i.getWidth > dim.width || i.getHeight > dim.height)
+                if (i.getWidth > dim.width || i.getHeight > dim.height) {
+                    "Resize " + f + "\n" |> info
                     for {
                         newI <- resizeImage(i, dim)
                         temp <- maybeIO { createTempFile(f getParentFile) }
@@ -389,7 +390,7 @@ class Mede8er extends MediaPlayer {
                         _ <- maybeIO { deleteFile(f) }
                         s <- maybeIO { rename(temp, f) }
                     } yield s
-                else
+                } else
                     DONE |> asRight
         }
 
