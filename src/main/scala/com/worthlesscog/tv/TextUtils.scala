@@ -18,6 +18,7 @@ object TextUtils {
         actorVoice
 
     def substitutions(s: String) = s |>
+        compressMultiQuotes |>
         substituteDoubleQuotes |>
         substituteEllipses |>
         substituteLinefeeds
@@ -33,7 +34,6 @@ object TextUtils {
 
     def tidyText(s: String) = s |>
         removeControlCharacters |>
-        compressMultiQuotes |>
         compressMultiSpaces |>
         unfloatCommas |>
         unfloatFullStops |>
