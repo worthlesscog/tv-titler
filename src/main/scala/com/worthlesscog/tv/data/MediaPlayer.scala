@@ -14,4 +14,6 @@ trait MediaPlayer {
 
     def resize(target: File): Maybe[String]
 
+    def sanitize(target: File): Maybe[String]
+
 }

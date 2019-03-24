@@ -427,4 +427,7 @@ class Mede8er extends MediaPlayer {
         else
             DONE |> asRight
 
+    def sanitize(target: File): Maybe[String] =
+        ???
+
 }

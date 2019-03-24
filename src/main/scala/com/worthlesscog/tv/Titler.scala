@@ -19,7 +19,7 @@ import scala.util.Success
 object Titler {
 
     object Op extends Enumeration {
-        val merge, noop, resize, search = Value
+        val merge, noop, resize, sanitize, search = Value
     }
 
     val BUSY = " ...\n"
@@ -48,6 +48,7 @@ object Titler {
     var op = Op.noop
     var player: MediaPlayer = mede8er
     var resize = ""
+    var sanitize = ""
     var search = ""
     var seasons: Option[Set[Int]] = None
 
@@ -83,6 +84,11 @@ object Titler {
             case "-resize" :: d :: tail =>
                 resize = d
                 op = Op.resize
+                parseArgs(tail)
+
+            case "-sanitize" :: d :: tail =>
+                sanitize = d
+                op = Op.sanitize
                 parseArgs(tail)
 
             case "-search" :: s :: tail =>
@@ -143,6 +149,11 @@ object Titler {
             case Op.resize =>
                 for {
                     status <- player.resize(new File(resize))
+                } yield status
+
+            case Op.sanitize =>
+                for {
+                    status <- player.sanitize(new File(sanitize))
                 } yield status
 
             case Op.search =>
