@@ -52,7 +52,6 @@ package object tv {
     //        def write(list: Option[Seq[T]]) = ???
     //    }
 
-    lazy val home = Paths.get(System.getProperty("user.home"))
     lazy val log = Logger("Titler")
 
     def asInt(s: String) =
