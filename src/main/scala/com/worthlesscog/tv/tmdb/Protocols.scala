@@ -4,6 +4,7 @@ import spray.json.{DefaultJsonProtocol, JsValue, RootJsonFormat}
 
 object Protocols extends DefaultJsonProtocol {
 
+    import com.worthlesscog.tv.optionSeqFormat
     import com.worthlesscog.tv.optionStringFormat
 
     implicit val imagesFmt = jsonFormat4(Images)
@@ -24,7 +25,6 @@ object Protocols extends DefaultJsonProtocol {
     implicit val genresFmt = jsonFormat1(Genres)
 
     implicit val imageFmt = jsonFormat4(Image)
-    // implicit val episodeImagesFmt = jsonFormat2(EpisodeImages)
     implicit val seasonImagesFmt = jsonFormat2(SeasonImages)
     implicit val showImagesFmt = jsonFormat3(ShowImages)
 

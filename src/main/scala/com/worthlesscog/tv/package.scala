@@ -4,7 +4,7 @@ import java.io.IOException
 import java.nio.file.Paths
 
 import com.typesafe.scalalogging.Logger
-import spray.json.{JsNumber, JsString, JsValue, RootJsonFormat}
+import spray.json.{JsArray, JsNumber, JsonFormat, JsString, JsValue, RootJsonFormat}
 
 package object tv {
 
@@ -27,6 +27,16 @@ package object tv {
         def |>[B](f: A => B): B = f(a)
     }
 
+    // XXX - This works but is problematic - season counts don't necessarily include specials but lists do
+    implicit def optionSeqFormat[T: JsonFormat] = new RootJsonFormat[Option[Seq[T]]] {
+        def read(v: JsValue): Option[Seq[T]] = v match {
+            case JsArray(elements) if elements nonEmpty => Some(elements map { _.convertTo[T] })
+            case _                                      => None
+        }
+
+        def write(list: Option[Seq[T]]) = ???
+    }
+
     // XXX - this is probably slooow
     implicit object optionStringFormat extends RootJsonFormat[Option[String]] {
         def read(v: JsValue): Option[String] = v match {
@@ -42,16 +52,7 @@ package object tv {
         def unapply[T](t: T) = if (t == null) Some(None) else Some(Some(t))
     }
 
-    // XXX - This works but is problematic - season counts don't necessarily include specials but lists do
-    //    implicit def optionSeqFormat[T: JsonFormat] = new RootJsonFormat[Option[Seq[T]]] {
-    //        def read(value: JsValue): Option[Seq[T]] = value match {
-    //            case JsArray(elements) if elements.nonEmpty => Some(elements map { _.convertTo[T] })
-    //            case _                                      => None
-    //        }
-    //
-    //        def write(list: Option[Seq[T]]) = ???
-    //    }
-
+    lazy val home = Paths.get(System.getProperty("user.home"))
     lazy val log = Logger("Titler")
 
     def asInt(s: String) =
